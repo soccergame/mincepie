@@ -57,11 +57,17 @@ TASK = Enum(['START',
              'FINISHED',
             ])
 
-class Protocol(asynchat.async_chat):
+class Protocol(asynchat.async_chat, object):
     """Communication protocol
     
     The Protocol class defines the basic protocol that both the server and
     the client will follow during the mapreduce execution.
+
+    The basic function the protocol implements are:
+        * provide parser for  the basic password and port for the connection
+        * send command with possible arguments and data
+        * deal with incoming data
+        * Two-way authentication
     """
     def __init__(self, conn=None):
         if conn:
@@ -74,6 +80,16 @@ class Protocol(asynchat.async_chat):
         self.buffer = []
         self.auth = None
         self.mid_command = None
+
+    def get_parser(self):
+        """get the commandline parser
+        """
+        parser = argparse.ArgumentParser()
+        parser.add_argument("--password", type=str, default=DEFAULT_PASSWORD,
+                            help = "The password for the mapreduce task")
+        parser.add_argument("--port", type=int, default=DEFAULT_PORT, 
+                            help="The port number for the mapreduce task")
+        return parser
 
     def collect_incoming_data(self, data):
         """Collect the incoming data and put it under buffer
@@ -190,21 +206,20 @@ class Client(Protocol):
         Protocol.__init__(self)
         self.mapper = None
         self.reducer = None
-        # deal with the commandline arguments that we are going to use
-        parser = argparse.ArgumentParser()
+
+    def get_parser(self):
+        parser = super(Client, self).get_parser()
         parser.add_argument("--mapper", type=str, required=True,
                             help = "The mapper class for the mapreduce task")
         parser.add_argument("--reducer", type=str, required=True,
                             help = "The reducer class for the mapreduce task")
-        parser.add_argument("--password", type=str, default="",
-                            help = "The password for the mapreduce task")
-        parser.add_argument("--port", type=int, default=DEFAULT_PORT, 
-                            help="The port number for the mapreduce task")
         parser.add_argument("--address", type=str, default=DEFAULT_ADDRESS,
                             help="The address of the server")
-        self.args = parser.parse_known_args()[0]
+        return parser
     
     def run_client(self):
+        parser = self.get_parser()
+        self.args = parser.parse_known_args()[0]
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.password = self.args.password
         self.connect((self.args.address, self.args.port))
@@ -267,7 +282,8 @@ class Server(asyncore.dispatcher, object):
     def __init__(self):
         asyncore.dispatcher.__init__(self)
         self.datasource = None
-        # deal with the commandline arguments that we are going to use
+    
+    def get_parser(self):
         parser = argparse.ArgumentParser()
         parser.add_argument("--reader", type=str, required=True,
                             help = "The reader class for the mapreduce task")
@@ -275,12 +291,13 @@ class Server(asyncore.dispatcher, object):
                             help = "The password for the mapreduce task")
         parser.add_argument("--port", type=int, default=DEFAULT_PORT, 
                             help="The port number for the mapreduce task")
-        self.args = parser.parse_known_args()[0]
+        return parser
 
     def run_server(self):
+        parser = self.get_parser()
+        self.args = parser.parse_known_args()[0]
         self.datasource = mapreducer.Reader(self.args.reader)().Read()
         print self.datasource
-        self.password = self.args.password
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.bind(("", self.args.port))
         self.listen(1)
@@ -299,7 +316,7 @@ class Server(asyncore.dispatcher, object):
         conn, addr = pair
         logging.info("New client arrived at " + str(addr))
         sc = ServerChannel(conn, addr, self)
-        sc.password = self.password
+        sc.password = self.args.password
 
     def handle_close(self):
         self.close()
@@ -442,28 +459,3 @@ def main():
         # client mode
         c = Client()
         c.run_client()
-
-
-def run_client():
-    pass
-    """
-    parser = optparse.OptionParser(usage="%prog [options]", version="%%prog %s"%VERSION)
-    parser.add_option("-p", "--password", dest="password", default="", help="password")
-    parser.add_option("-P", "--port", dest="port", type="int", default=DEFAULT_PORT, help="port")
-    parser.add_option("-v", "--verbose", dest="verbose", action="store_true")
-    parser.add_option("-V", "--loud", dest="loud", action="store_true")
-
-    (options, args) = parser.parse_args()
-                      
-    if options.verbose:
-        logging.basicConfig(level=logging.INFO)
-    if options.loud:
-        logging.basicConfig(level=logging.DEBUG)
-
-    client = Client()
-    client.password = options.password
-    client.conn(args[0], options.port)
-    """               
-
-if __name__ == '__main__':
-    main()
