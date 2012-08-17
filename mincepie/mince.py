@@ -254,7 +254,7 @@ class Client(Protocol):
         results = {}
         if self.mapper is None:
             # create the mapper instance
-            self.mapper = mapreducer.Mapper(FLAGS.mapper)()
+            self.mapper = mapreducer.MAPPER(FLAGS.mapper)()
         for k, v in self.mapper.map(data[0], data[1]):
             try:
                 results[k].append(v)
@@ -270,7 +270,7 @@ class Client(Protocol):
         logging.info("Reducing %s" % str(data[0]))
         if self.reducer is None:
             # create the reducer instance
-            self.reducer = mapreducer.Reducer(FLAGS.reducer)()
+            self.reducer = mapreducer.REDUCER(FLAGS.reducer)()
         results = self.reducer.reduce(data[0], data[1])
         self.send_command(COMMAND.reducedone, (data[0], results))
         
@@ -306,7 +306,7 @@ class Server(asyncore.dispatcher, object):
     datasource = property(get_datasource, set_datasource)
 
     def run_server(self, inputlist):
-        self.datasource = mapreducer.Reader(FLAGS.reader)().read(inputlist)
+        self.datasource = mapreducer.READER(FLAGS.reader)().read(inputlist)
         print self.datasource
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.bind(("", FLAGS.port))
@@ -317,7 +317,7 @@ class Server(asyncore.dispatcher, object):
             asyncore.close_all()
             raise
         logging.info("Mapreduce done.")
-        mapreducer.Writer(FLAGS.writer)().write(self.taskmanager.results)
+        mapreducer.WRITER(FLAGS.writer)().write(self.taskmanager.results)
 
     def handle_accept(self):
         pair = self.accept()

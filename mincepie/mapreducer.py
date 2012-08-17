@@ -13,47 +13,30 @@ author: Yangqing Jia (jiayq84@gmail.com)
 # by its name using the MAPPER() function like MAPPER('FooMapper').
 # This allows us to specify mapper using commandline arguments.
 
-def _REGISTER(target_dict, object_to_register):
-    """The basic registerer
-    """
-    target_dict[object_to_register.__name__] = object_to_register
-
 _MAPPERS  = {}
 _REDUCERS = {}
 _READERS  = {}
 _WRITERS  = {}
-REGISTER_MAPPER  = lambda mapper:  _REGISTER(_MAPPERS,  mapper)
-REGISTER_REDUCER = lambda reducer: _REGISTER(_REDUCERS, reducer)
-REGISTER_READER  = lambda reader:  _REGISTER(_READERS,  reader)
-REGISTER_WRITER  = lambda writer:  _REGISTER(_WRITERS,  writer)
 
-def Mapper(name):
-    """Get Mapper by its name
-
-    See REGISTER_MAPPER() for details
+def _register(target_dict, object_to_register):
+    """The basic registerer
     """
-    return _MAPPERS[name]
+    target_dict[object_to_register.__name__] = object_to_register
 
-def Reducer(name):
-    """Get Reducer by its name
+REGISTER_MAPPER  = lambda mapper:  _register(_MAPPERS,  mapper)
+REGISTER_REDUCER = lambda reducer: _register(_REDUCERS, reducer)
+REGISTER_READER  = lambda reader:  _register(_READERS,  reader)
+REGISTER_WRITER  = lambda writer:  _register(_WRITERS,  writer)
 
-    See REGISTER_MAPPER() for details
+def _get_registered(source_dict, name):
+    """Get the registered object from the dictionary
     """
-    return _REDUCERS[name]
+    return source_dict[name]
 
-def Reader(name):
-    """Get Reader by its name
-
-    See REGISTER_MAPPER() for details
-    """
-    return _READERS[name]
-
-def Writer(name):
-    """Get Reader by its name
-
-    See REGISTER_MAPPER() for details
-    """
-    return _WRITERS[name]
+MAPPER  = lambda name: _get_registered(_MAPPERS,  name)
+REDUCER = lambda name: _get_registered(_REDUCERS, name)
+READER  = lambda name: _get_registered(_READERS,  name)
+WRITER  = lambda name: _get_registered(_WRITERS,  name)
 
 
 class BasicMapper(object):
