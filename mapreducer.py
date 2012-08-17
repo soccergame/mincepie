@@ -132,7 +132,7 @@ class BasicReader(object):
     def SetUp(self):
         pass
 
-    def Read(self):
+    def Read(self, inputlist):
         raise NotImplementedError
 
 
@@ -154,6 +154,7 @@ class SumReducer(BasicReducer):
         return sum(vs)
 
 RegisterReducer(SumReducer)
+
 
 class FirstElementReducer(BasicReducer):
     """FirstElementReducer is a reducer that takes the first value and ignores

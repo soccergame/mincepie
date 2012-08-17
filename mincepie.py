@@ -11,6 +11,7 @@ import argparse
 import asynchat
 import asyncore
 import cPickle as pickle
+import gflags
 import hashlib
 import hmac
 import logging
@@ -25,12 +26,8 @@ import types
 # local modules
 import mapreducer
 
-
 # constant variables
 VERSION = "0.0.1"
-DEFAULT_PORT = 11235
-DEFAULT_PASSWORD = "password"
-DEFAULT_ADDRESS = "127.0.0.1"
 SEPARATOR = ':'
 TERMINATOR = '\n'
 
@@ -51,11 +48,34 @@ COMMAND = Enum(['challenge',
                 'mapdone',
                 'reducedone',
                ])
+
 TASK = Enum(['START',
              'MAPPING',
              'REDUCING',
              'FINISHED',
             ])
+
+# commandline flags
+FLAGS = gflags.FLAGS
+# general flags    
+gflags.DEFINE_boolean("server", False,
+                      "If --server is specified, run in servermode.")
+# flags defined by Protocol
+gflags.DEFINE_string("password", "default",
+                     "The password for server client authentication")
+gflags.DEFINE_integer("port", 11235, 
+                      "The port number for the mapreduce task")
+# flags defined by Client
+gflags.DEFINE_string("mapper", "BasicMapper",
+                     "The mapper class for the mapreduce task")
+gflags.DEFINE_string("reducer", "BasicReducer",
+                     "The reducer class for the mapreduce task")
+gflags.DEFINE_string("address", "127.0.0.1",
+                     "The address of the server")
+# flags defined by Server
+gflags.DEFINE_string("reader", "BasicReader",
+                     "The reader class for the mapreduce task")
+
 
 class Protocol(asynchat.async_chat, object):
     """Communication protocol
@@ -74,22 +94,11 @@ class Protocol(asynchat.async_chat, object):
             asynchat.async_chat.__init__(self, conn)
         else:
             asynchat.async_chat.__init__(self)
-
         # We use the newline as the terminator
         self.set_terminator(TERMINATOR)
         self.buffer = []
         self.auth = None
         self.mid_command = None
-
-    def get_parser(self):
-        """get the commandline parser
-        """
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--password", type=str, default=DEFAULT_PASSWORD,
-                            help = "The password for the mapreduce task")
-        parser.add_argument("--port", type=int, default=DEFAULT_PORT, 
-                            help="The port number for the mapreduce task")
-        return parser
 
     def collect_incoming_data(self, data):
         """Collect the incoming data and put it under buffer
@@ -165,12 +174,12 @@ class Protocol(asynchat.async_chat, object):
         self.send_command(COMMAND.challenge, arg=self.auth)
 
     def respond_to_challenge(self, command, data):
-        mac = hmac.new(self.password, data, hashlib.sha1)
+        mac = hmac.new(FLAGS.password, data, hashlib.sha1)
         self.send_command(COMMAND.auth, arg=mac.digest().encode("hex"))
         self.post_auth_init()
 
     def verify_auth(self, command, data):
-        mac = hmac.new(self.password, self.auth, hashlib.sha1)
+        mac = hmac.new(FLAGS.password, self.auth, hashlib.sha1)
         if data == mac.digest().encode("hex"):
             self.auth = "Done"
             logging.info("Authenticated the other end")
@@ -207,22 +216,9 @@ class Client(Protocol):
         self.mapper = None
         self.reducer = None
 
-    def get_parser(self):
-        parser = super(Client, self).get_parser()
-        parser.add_argument("--mapper", type=str, required=True,
-                            help = "The mapper class for the mapreduce task")
-        parser.add_argument("--reducer", type=str, required=True,
-                            help = "The reducer class for the mapreduce task")
-        parser.add_argument("--address", type=str, default=DEFAULT_ADDRESS,
-                            help="The address of the server")
-        return parser
-    
     def run_client(self):
-        parser = self.get_parser()
-        self.args = parser.parse_known_args()[0]
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.password = self.args.password
-        self.connect((self.args.address, self.args.port))
+        self.connect((FLAGS.address, FLAGS.port))
         asyncore.loop()
 
     def handle_connect(self):
@@ -242,7 +238,7 @@ class Client(Protocol):
         results = {}
         if self.mapper is None:
             # create the mapper instance
-            self.mapper = mapreducer.Mapper(self.args.mapper)()
+            self.mapper = mapreducer.Mapper(FLAGS.mapper)()
         for k, v in self.mapper.Map(data[0], data[1]):
             try:
                 results[k].append(v)
@@ -258,7 +254,7 @@ class Client(Protocol):
         logging.info("Reducing %s" % str(data[0]))
         if self.reducer is None:
             # create the reducer instance
-            self.reducer = mapreducer.Reducer(self.args.reducer)()
+            self.reducer = mapreducer.Reducer(FLAGS.reducer)()
         results = self.reducer.Reduce(data[0], data[1])
         self.send_command(COMMAND.reducedone, (data[0], results))
         
@@ -281,25 +277,23 @@ class Client(Protocol):
 class Server(asyncore.dispatcher, object):
     def __init__(self):
         asyncore.dispatcher.__init__(self)
-        self.datasource = None
-    
-    def get_parser(self):
-        parser = argparse.ArgumentParser()
-        parser.add_argument("--reader", type=str, required=True,
-                            help = "The reader class for the mapreduce task")
-        parser.add_argument("--password", type=str, default=DEFAULT_PASSWORD,
-                            help = "The password for the mapreduce task")
-        parser.add_argument("--port", type=int, default=DEFAULT_PORT, 
-                            help="The port number for the mapreduce task")
-        return parser
+        self._datasource = None
+        self.taskmanager = None
 
-    def run_server(self):
-        parser = self.get_parser()
-        self.args = parser.parse_known_args()[0]
-        self.datasource = mapreducer.Reader(self.args.reader)().Read()
+    def set_datasource(self, ds):
+        self._datasource = ds
+        self.taskmanager = TaskManager(self._datasource, self)
+    
+    def get_datasource(self):
+        return self._datasource
+
+    datasource = property(get_datasource, set_datasource)
+
+    def run_server(self, inputlist):
+        self.datasource = mapreducer.Reader(FLAGS.reader)().Read(inputlist)
         print self.datasource
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.bind(("", self.args.port))
+        self.bind(("", FLAGS.port))
         self.listen(1)
         try:
             asyncore.loop()
@@ -316,19 +310,9 @@ class Server(asyncore.dispatcher, object):
         conn, addr = pair
         logging.info("New client arrived at " + str(addr))
         sc = ServerChannel(conn, addr, self)
-        sc.password = self.args.password
 
     def handle_close(self):
         self.close()
-
-    def set_datasource(self, ds):
-        self._datasource = ds
-        self.taskmanager = TaskManager(self._datasource, self)
-    
-    def get_datasource(self):
-        return self._datasource
-
-    datasource = property(get_datasource, set_datasource)
 
 
 class ServerChannel(Protocol):
@@ -445,15 +429,19 @@ class TaskManager(object):
         self.working_reduces.remove(data[0])
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--server", action="store_true",
-                        help = "if --server is specified, run server.")
-    args = parser.parse_known_args()[0]
-    if args.server:
+def main(argv=None):
+    if argv is None:
+        argv = sys.argv
+    try:
+        # parse flags
+        inputlist = FLAGS(argv)
+    except gflags.FlagsError, e:
+        print '%s\\nUsage: %s ARGS\\n%s' % (e, argv[0], FLAGS)
+        sys.exit(1)
+    if FLAGS.server:
         # server mode
         s = Server()
-        result = s.run_server()
+        result = s.run_server(inputlist)
         print result
     else:
         # client mode

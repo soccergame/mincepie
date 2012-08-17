@@ -19,7 +19,7 @@ mapreducer.RegisterReducer(WordCountReducer)
 class ZenReader(mapreducer.BasicReader):
     """A demo reader that reads the zen of python
     """
-    def Read(self):
+    def Read(self, inputlist):
         zen = ["Beautiful is better than ugly",
                "Explicit is better than implicit",
                "Simple is better than complex",
