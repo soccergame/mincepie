@@ -33,6 +33,7 @@ from mincepie import mapreducer
 VERSION = "0.0.1"
 SEPARATOR = ':'
 TERMINATOR = '\n'
+CONNECTION_WAIT_TIME = 1
 
 # we use an enum to define the commands, just in case some typo takes place
 # in coding.
@@ -187,7 +188,7 @@ class Protocol(asynchat.async_chat, object):
         mac = hmac.new(FLAGS.password, self.auth, hashlib.sha1)
         if data == mac.digest().encode("hex"):
             self.auth = "Done"
-            logging.info("Authenticated the other end")
+            logging.debug("Authenticated the other end")
         else:
             self.handle_close()
 
@@ -220,6 +221,7 @@ class Client(Protocol):
         Protocol.__init__(self)
         self.mapper = None
         self.reducer = None
+        self.address = None
 
     def run_client(self, address = None):
         """Runs the client
@@ -231,8 +233,16 @@ class Client(Protocol):
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         if address is None:
             address = FLAGS.address
-        logging.info("Connecting to %s:%d" % (address, FLAGS.port))
-        self.connect((address, FLAGS.port))
+        logging.debug("Connecting to %s:%d" % (address, FLAGS.port))
+        # connect, with possible failure
+        while not self.connected:
+            try:
+                logging.debug('Trying to connect...')
+                self.connect((address, FLAGS.port))
+            except socket.error, message:
+                logging.debug("Conection failed, retry...")
+                time.sleep(CONNECTION_WAIT_TIME)
+        logging.debug('Connected!')
         asyncore.loop()
 
     def handle_connect(self):
@@ -248,7 +258,7 @@ class Client(Protocol):
             command: a dummy variable that equals to COMMAND.map
             data: a tuple containing the (key,value) pair
         """
-        logging.info("Mapping %s" % str(data[0]))
+        logging.debug("Mapping %s" % str(data[0]))
         results = {}
         if self.mapper is None:
             # create the mapper instance
@@ -265,7 +275,7 @@ class Client(Protocol):
 
         See call_map for details
         """
-        logging.info("Reducing %s" % str(data[0]))
+        logging.debug("Reducing %s" % str(data[0]))
         if self.reducer is None:
             # create the reducer instance
             self.reducer = mapreducer.REDUCER(FLAGS.reducer)()
@@ -305,7 +315,6 @@ class Server(asyncore.dispatcher, object):
 
     def run_server(self, inputlist):
         self.datasource = mapreducer.READER(FLAGS.reader)().read(inputlist)
-        print self.datasource
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.bind(("", FLAGS.port))
         self.listen(1)
@@ -403,7 +412,7 @@ class TaskManager(object):
                     self.working_maps[key] = time.time()
                     return (COMMAND.map, (key, self.datasource[key]))
                 else:
-                    logging.info("Map done. Start ReM YQduce phase.")
+                    logging.info("Map done. Start Reduce phase.")
                     self.state = TASK.REDUCING
                     self.reduce_iter = self.map_results.iteritems()
                     self.working_reduces = {}
