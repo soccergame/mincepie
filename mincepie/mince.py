@@ -1,18 +1,18 @@
-# The module that implements the server, the clients, and the communication
-# between the server and clients.
-#
-# The communication part of this code is adapted from the original mincemeat 
-# code. For more details, please read the LICENSE file.
-# 
-# Usually you don't need to import mince in your own mapreduce code - instead,
-# import mapreducer to write your mappers, reducers, readers and writers, and
-# import launcher to launch the mapreduce job.
-#
-#
-# author: Yangqing Jia (jiayq84@gmail.com)
+"""The mapreduce mince module
+The module implements the server, the clients, and the communication between
+the server and clients.
+
+The communication part of this code is adapted from the original mincemeat 
+code. For more details, please read the LICENSE file.
+ 
+Usually you don't need to import mince in your own mapreduce code - instead,
+import mapreducer to write your mappers, reducers, readers and writers, and
+import launcher to launch the mapreduce job.
+
+author: Yangqing Jia (jiayq84@gmail.com)
+"""
 
 # python modules
-import argparse
 import asynchat
 import asyncore
 import cPickle as pickle
@@ -20,31 +20,29 @@ import gflags
 import hashlib
 import hmac
 import logging
-import marshal
-import optparse
 import os
 import random
 import socket
 import sys
-import types
 
 # local modules
-import mapreducer
+from mincepie import mapreducer
 
 # constant variables
 VERSION = "0.0.1"
 SEPARATOR = ':'
 TERMINATOR = '\n'
 
+# we use an enum to define the commands, just in case some typo takes place
+# in coding.
 class Enum(set):
+    """A simple Enum class
+    """
     def __getattr__(self, name):
         if name in self:
             return name
         raise AttributeError
 
-# we use an enum to define the commands, just in case some typo takes place
-# in coding, and shortens the command being send over the network (really
-# doesn't matter much in the modern days...)
 COMMAND = Enum(['challenge',
                 'auth',
                 'disconnect',
@@ -60,8 +58,6 @@ TASK = Enum(['START',
              'FINISHED',
             ])
 
-# commandline flags
-FLAGS = gflags.FLAGS
 # general flags    
 gflags.DEFINE_boolean("server", False,
                       "If --server is specified, run in servermode.")
@@ -82,7 +78,8 @@ gflags.DEFINE_string("reader", "BasicReader",
                      "The reader class for the mapreduce task")
 gflags.DEFINE_string("writer", "BasicWriter",
                      "The reader class for the mapreduce task")
-
+# FLAGS
+FLAGS = gflags.FLAGS
 
 class Protocol(asynchat.async_chat, object):
     """Communication protocol
