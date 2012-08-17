@@ -24,6 +24,7 @@ import os
 import random
 import socket
 import sys
+import time
 
 # local modules
 from mincepie import mapreducer
@@ -382,7 +383,7 @@ class TaskManager(object):
         if self.state == TASK.START:
             logging.info("Start mapreduce.")
             self.map_iter = iter(self.datasource)
-            self.working_maps = set()
+            self.working_maps = {}
             self.map_results = {}
             logging.info("Start map phase.")
             self.state = TASK.MAPPING
@@ -391,30 +392,32 @@ class TaskManager(object):
             try:
                 # get next map task
                 map_key = self.map_iter.next()
-                self.working_maps.add(map_key)
+                self.working_maps[map_key] = time.time()
                 return (COMMAND.map, (map_key, self.datasource[map_key]))
             except StopIteration:
                 # if we finished sending out all map tasks, select one task
                 # from the existing pools (in case some of the jobs died for
                 # some reason). If all maps are done, we go on to reduce
-                if len(self.working_maps) > 0:
-                    key = random.choice(list(self.working_maps))
+                if self.working_maps:
+                    key = min(self.working_maps, key=self.working_maps.get)
+                    self.working_maps[key] = time.time()
                     return (COMMAND.map, (key, self.datasource[key]))
                 else:
-                    logging.info("Map done. Start Reduce phase.")
+                    logging.info("Map done. Start ReM YQduce phase.")
                     self.state = TASK.REDUCING
                     self.reduce_iter = self.map_results.iteritems()
-                    self.working_reduces = set()
+                    self.working_reduces = {}
                     self.results = {}
 
         if self.state == TASK.REDUCING:
             try:
                 reduce_item = self.reduce_iter.next()
-                self.working_reduces.add(reduce_item[0])
+                self.working_reduces[reduce_item[0]] = time.time()
                 return (COMMAND.reduce, reduce_item)
             except StopIteration:
-                if len(self.working_reduces) > 0:
-                    key = random.choice(list(self.working_reduces))
+                if self.working_reduces:
+                    key = min(self.working_reduces, key=self.working_reduces.get)
+                    self.working_reduces[key] = time.time()
                     return (COMMAND.reduce, (key, self.map_results[key]))
                 else:
                     logging.info("Reduce phase done.")
@@ -431,13 +434,13 @@ class TaskManager(object):
             if key not in self.map_results:
                 self.map_results[key] = []
             self.map_results[key].extend(values)
-        self.working_maps.remove(data[0])
+        del self.working_maps[data[0]]
                                 
     def reduce_done(self, data):
         # Don't use the results if they've already been counted
         if not data[0] in self.working_reduces:
             return
         self.results[data[0]] = data[1]
-        self.working_reduces.remove(data[0])
+        del self.working_reduces[data[0]]
 
 
