@@ -8,6 +8,7 @@
 __registered_mappers = {}
 __registered_reducers = {}
 __registered_readers = {}
+__registered_writers = {}
 
 # RegisterMapper and RegisterReducerer methods
 #
@@ -38,6 +39,13 @@ def RegisterReader(reader):
     """
     __registered_readers[reader.__name__] = reader
 
+def RegisterWriter(writer):
+    """Reader Registerer
+
+    See RegisterMapper() for details
+    """
+    __registered_writers[writer.__name__] = writer
+
 # RegisterMapper and RegisterReducerer methods
 #
 # These methods returns the mapper or reducer class by its name as a string.
@@ -61,6 +69,13 @@ def Reader(name):
     See RegisterMapper() for details
     """
     return __registered_readers[name]
+
+def Writer(name):
+    """Get Reader by its name
+
+    See RegisterMapper() for details
+    """
+    return __registered_writers[name]
 
 
 class BasicMapper(object):
@@ -91,6 +106,8 @@ class BasicMapper(object):
         """
         raise NotImplementedError
 
+RegisterMapper(BasicMapper)
+
 
 class BasicReducer(object):
     """The basic reducer class. 
@@ -120,6 +137,8 @@ class BasicReducer(object):
         """
         raise NotImplementedError
 
+RegisterReducer(BasicReducer)
+
 
 class BasicReader(object):
     """The basic reader class
@@ -134,6 +153,27 @@ class BasicReader(object):
 
     def Read(self, inputlist):
         raise NotImplementedError
+
+RegisterReader(BasicReader)
+
+
+class BasicWriter(object):
+    """The basic writer class
+
+    Different from the mapper, reducer, reader base classes, you can directly
+    use BasicWriter - it simply spits all the dictionary entries.
+    """
+    def __init__(self):
+        self.SetUp()
+    
+    def SetUp(self):
+        pass
+
+    def Write(self, result):
+        for k in result:
+            print k, ":", result[k]
+
+RegisterWriter(BasicWriter)
 
 
 class IdentityMapper(BasicMapper):

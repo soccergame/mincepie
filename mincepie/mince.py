@@ -75,6 +75,8 @@ gflags.DEFINE_string("address", "127.0.0.1",
 # flags defined by Server
 gflags.DEFINE_string("reader", "BasicReader",
                      "The reader class for the mapreduce task")
+gflags.DEFINE_string("writer", "BasicWriter",
+                     "The reader class for the mapreduce task")
 
 
 class Protocol(asynchat.async_chat, object):
@@ -191,9 +193,9 @@ class Protocol(asynchat.async_chat, object):
             COMMAND.challenge: self.respond_to_challenge,
             COMMAND.disconnect: lambda x,y: self.handle_close(),
             }
-        try:
+        if command in handlers:
             handlers[command](command, data)
-        except KeyError:
+        else:
             logging.critical("Unknown command received: " + command) 
             self.handle_close()
 
@@ -203,9 +205,9 @@ class Protocol(asynchat.async_chat, object):
             COMMAND.auth: self.verify_auth,
             COMMAND.disconnect: lambda x, y: self.handle_close(),
             }
-        try:
+        if command in handlers:
             handlers[command](command, data)
-        except KeyError:
+        else:
             logging.critical("Unknown command received: " + command) 
             self.handle_close()
         
@@ -216,9 +218,18 @@ class Client(Protocol):
         self.mapper = None
         self.reducer = None
 
-    def run_client(self):
+    def run_client(self, address = None):
+        """Runs the client
+
+        If address is None, the server address is obtaind from the commandline
+        flags. Otherwise (e.g. we are running the whole mapreduce under MPI),
+        the server address is the passed-in address.
+        """
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.connect((FLAGS.address, FLAGS.port))
+        if address is None:
+            address = FLAGS.address
+        logging.info("Connecting to %s:%d" % (address, FLAGS.port))
+        self.connect((address, FLAGS.port))
         asyncore.loop()
 
     def handle_connect(self):
@@ -263,9 +274,9 @@ class Client(Protocol):
             COMMAND.map: self.call_map,
             COMMAND.reduce: self.call_reduce,
             }
-        try:
+        if command in handlers:
             handlers[command](command, data)
-        except KeyError:
+        else:
             # If key not recognized, fall back to the super class
             Protocol.process_command(self, command, data)
 
@@ -301,7 +312,7 @@ class Server(asyncore.dispatcher, object):
             asyncore.close_all()
             raise
         logging.info("Mapreduce done.")
-        return self.taskmanager.results
+        mapreducer.Writer(FLAGS.writer)().Write(self.taskmanager.results)
 
     def handle_accept(self):
         pair = self.accept()
@@ -348,10 +359,10 @@ class ServerChannel(Protocol):
             COMMAND.mapdone: self.map_done,
             COMMAND.reducedone: self.reduce_done,
             }
-        try:
+        if command in handlers:
             handlers[command](command, data)
-        except KeyError:
-            Protocol.process_command(self, command, data)
+        else:
+            super(ServerChannel, self).process_command(command, data)
 
     def post_auth_init(self):
         self.start_new_task()
@@ -367,11 +378,11 @@ class TaskManager(object):
         """Returns the next task to carry out
         """
         if self.state == TASK.START:
-            logging.info("Start mapreduce")
+            logging.info("Start mapreduce.")
             self.map_iter = iter(self.datasource)
             self.working_maps = set()
             self.map_results = {}
-            logging.info("Start map phase")
+            logging.info("Start map phase.")
             self.state = TASK.MAPPING
         
         if self.state == TASK.MAPPING:
@@ -388,7 +399,7 @@ class TaskManager(object):
                     key = random.choice(list(self.working_maps))
                     return (COMMAND.map, (key, self.datasource[key]))
                 else:
-                    logging.info("Map done. Start Reduce phase")
+                    logging.info("Map done. Start Reduce phase.")
                     self.state = TASK.REDUCING
                     self.reduce_iter = self.map_results.iteritems()
                     self.working_reduces = set()
@@ -404,12 +415,11 @@ class TaskManager(object):
                     key = random.choice(list(self.working_reduces))
                     return (COMMAND.reduce, (key, self.map_results[key]))
                 else:
-                    logging.info("Reduce phase done. Cleaning")
+                    logging.info("Reduce phase done.")
                     self.state = TASK.FINISHED
         if self.state == TASK.FINISHED:
             self.server.handle_close()
             return (COMMAND.disconnect, None)
-
     
     def map_done(self, data):
         # Don't use the results if they've already been counted
@@ -429,21 +439,3 @@ class TaskManager(object):
         self.working_reduces.remove(data[0])
 
 
-def main(argv=None):
-    if argv is None:
-        argv = sys.argv
-    try:
-        # parse flags
-        inputlist = FLAGS(argv)
-    except gflags.FlagsError, e:
-        print '%s\\nUsage: %s ARGS\\n%s' % (e, argv[0], FLAGS)
-        sys.exit(1)
-    if FLAGS.server:
-        # server mode
-        s = Server()
-        result = s.run_server(inputlist)
-        print result
-    else:
-        # client mode
-        c = Client()
-        c.run_client()

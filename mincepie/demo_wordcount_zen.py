@@ -1,4 +1,4 @@
-from mincepie import mince, mapreducer
+from mincepie import mince, mapreducer, launcher
 
 class WordCountMapper(mapreducer.BasicMapper):
     def Map(self, k, v):
@@ -46,5 +46,5 @@ mapreducer.RegisterReader(ZenReader)
 if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.DEBUG)
-    mince.main()
+    launcher.launch()
 
