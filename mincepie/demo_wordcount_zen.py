@@ -1,24 +1,24 @@
-from mincepie import mince, mapreducer, launcher
+from mincepie import mapreducer, launcher
 
 class WordCountMapper(mapreducer.BasicMapper):
-    def Map(self, k, v):
+    def map(self, k, v):
         for word in v.split():
             yield word, 1
 
-mapreducer.RegisterMapper(WordCountMapper)
+mapreducer.REGISTER_MAPPER(WordCountMapper)
 
 
 class WordCountReducer(mapreducer.BasicReducer):
-    def Reduce(self, k, v):
+    def reduce(self, k, v):
         return sum(v)
 
-mapreducer.RegisterReducer(WordCountReducer)
+mapreducer.REGISTER_REDUCER(WordCountReducer)
 
 
 class ZenReader(mapreducer.BasicReader):
     """A demo reader that reads the zen of python
     """
-    def Read(self, inputlist):
+    def read(self, inputlist):
         zen = ["Beautiful is better than ugly",
                "Explicit is better than implicit",
                "Simple is better than complex",
@@ -41,10 +41,10 @@ class ZenReader(mapreducer.BasicReader):
               ]
         return dict(enumerate(zen))
 
-mapreducer.RegisterReader(ZenReader)
+mapreducer.REGISTER_READER(ZenReader)
 
 if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.DEBUG)
-    launcher.launch()
+    launcher.launch_mpi()
 

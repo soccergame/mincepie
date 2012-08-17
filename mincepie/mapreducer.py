@@ -1,81 +1,59 @@
-# Basic mapreduce class, and a few default ones
+"""Basic mapreduce class, and a few default ones
+
+author: Yangqing Jia (jiayq84@gmail.com)
+"""
+
+
+# Register methods
+# These methods allow you to register your mapper, reducer, reader and writers
+# so they are recognizable as a string.
 #
-# author: Yangqing Jia (jiayq84@gmail.com)
+# For example, if you have your self-definedmapper class called FooMapper, 
+# call REGISTER_MAPPER(FooMapper). You will then able to get the mapper class
+# by its name using the MAPPER() function like MAPPER('FooMapper').
+# This allows us to specify mapper using commandline arguments.
 
-
-# The registerd mappers and reducers allow us to use strings to specify which
-# mapper and reducer we want when running experiments
-__registered_mappers = {}
-__registered_reducers = {}
-__registered_readers = {}
-__registered_writers = {}
-
-# RegisterMapper and RegisterReducerer methods
-#
-# These methods allow you to register your mapper and reducer.
-def RegisterMapper(mapper):
-    """Mapper Registerer
-
-    Register your mapper so that the mapper string is recognizable as a
-    string. For example, if you have your self-definedmapper class called
-    FooMapper, call RegisterMapper(FooMapper). You will then able to get
-    the mapper by its name using the Mapper() function like
-        Mapper('FooMapper')
-    This allows us to specify mapper using commandline arguments.
+def _REGISTER(target_dict, object_to_register):
+    """The basic registerer
     """
-    __registered_mappers[mapper.__name__] = mapper
+    target_dict[object_to_register.__name__] = object_to_register
 
-def RegisterReducer(reducer):
-    """Reducer Registerer
+_MAPPERS  = {}
+_REDUCERS = {}
+_READERS  = {}
+_WRITERS  = {}
+REGISTER_MAPPER  = lambda mapper:  _REGISTER(_MAPPERS,  mapper)
+REGISTER_REDUCER = lambda reducer: _REGISTER(_REDUCERS, reducer)
+REGISTER_READER  = lambda reader:  _REGISTER(_READERS,  reader)
+REGISTER_WRITER  = lambda writer:  _REGISTER(_WRITERS,  writer)
 
-    See RegisterMapper() for details
-    """
-    __registered_reducers[reducer.__name__] = reducer
-
-def RegisterReader(reader):
-    """Reader Registerer
-
-    See RegisterMapper() for details
-    """
-    __registered_readers[reader.__name__] = reader
-
-def RegisterWriter(writer):
-    """Reader Registerer
-
-    See RegisterMapper() for details
-    """
-    __registered_writers[writer.__name__] = writer
-
-# RegisterMapper and RegisterReducerer methods
-#
-# These methods returns the mapper or reducer class by its name as a string.
 def Mapper(name):
     """Get Mapper by its name
 
-    See RegisterMapper() for details
+    See REGISTER_MAPPER() for details
     """
-    return __registered_mappers[name]
+    return _MAPPERS[name]
 
 def Reducer(name):
     """Get Reducer by its name
 
-    See RegisterMapper() for details
+    See REGISTER_MAPPER() for details
     """
-    return __registered_reducers[name]
+    return _REDUCERS[name]
 
 def Reader(name):
     """Get Reader by its name
 
-    See RegisterMapper() for details
+    See REGISTER_MAPPER() for details
     """
-    return __registered_readers[name]
+    return _READERS[name]
 
 def Writer(name):
     """Get Reader by its name
 
-    See RegisterMapper() for details
+    See REGISTER_MAPPER() for details
     """
-    return __registered_writers[name]
+    return _WRITERS[name]
 
 
 class BasicMapper(object):
@@ -85,18 +63,18 @@ class BasicMapper(object):
     """
 
     def __init__(self):
-        self.SetUp()
+        self.set_up()
 
-    def SetUp(self):
-        """Any initialization should be written in the SetUp function.
+    def set_up(self):
+        """Sets up the mapper.
 
-        Note that no parameters are passed to SetUp(). For any paramter you
+        Note that no parameters are passed to set_up(). For any paramter you
         need to initialize the mapper, use argparse.ArgumentParser, and then
         pass the parameters using commandline arguments.
         """
         pass
 
-    def Map(self, k,v):
+    def map(self, key, value):
         """The map function for mapreduce.
 
         The input should be one key and one value. The output should be a list
@@ -106,7 +84,7 @@ class BasicMapper(object):
         """
         raise NotImplementedError
 
-RegisterMapper(BasicMapper)
+REGISTER_MAPPER(BasicMapper)
 
 
 class BasicReducer(object):
@@ -116,18 +94,18 @@ class BasicReducer(object):
     """
 
     def __init__(self):
-        self.SetUp()
+        self.set_up()
 
-    def SetUp(self):
-        """Any initialization should be written in the SetUp function.
+    def set_up(self):
+        """Sets up the reducer.
 
-        Note that no parameters are passed to SetUp(). For any paramter you
+        Note that no parameters are passed to set_up(). For any paramter you
         need to initialize the mapper, use argparse.ArgumentParser, and then
         pass the parameters using commandline arguments.
         """
         pass
 
-    def Reduce(self, k, vs):
+    def reduce(self, key, values):
         """The reduce function for mapreduce.
 
         The input should be one key and one value. The output should be a list
@@ -137,7 +115,7 @@ class BasicReducer(object):
         """
         raise NotImplementedError
 
-RegisterReducer(BasicReducer)
+REGISTER_REDUCER(BasicReducer)
 
 
 class BasicReader(object):
@@ -146,15 +124,24 @@ class BasicReader(object):
     All your readers are belong to this.
     """
     def __init__(self):
-        self.SetUp()
+        self.set_up()
 
-    def SetUp(self):
+    def set_up(self):
+        """Sets up the reader
+        """
         pass
 
-    def Read(self, inputlist):
+    def read(self, inputlist):
+        """Reads the inputlist
+
+        Input:
+            inputlist: a list of strings obtained from commandline arguments
+        Output:
+            a dictionary containing (key,value) pairs.
+        """
         raise NotImplementedError
 
-RegisterReader(BasicReader)
+REGISTER_READER(BasicReader)
 
 
 class BasicWriter(object):
@@ -164,36 +151,45 @@ class BasicWriter(object):
     use BasicWriter - it simply spits all the dictionary entries.
     """
     def __init__(self):
-        self.SetUp()
+        self.set_up()
     
-    def SetUp(self):
+    def set_up(self):
+        """Sets up the writer
+        """
         pass
 
-    def Write(self, result):
-        for k in result:
-            print k, ":", result[k]
+    def write(self, result):
+        """Writes the result
 
-RegisterWriter(BasicWriter)
+        The BasicWriter write() function simply dumps the key, value pairs
+        to the stdout. You can write your own writer to do more fancy stuff.
+        Input:
+            a dictionary containing (key,value) pairs.
+        """
+        for key in result:
+            print key, ":", result[key]
+
+REGISTER_WRITER(BasicWriter)
 
 
 class IdentityMapper(BasicMapper):
     """IdentityMapper is a mapper that simply emits the same key value pair
     """
 
-    def Map(self, k,v):
-        return k,v
+    def map(self, key, value):
+        return key, value
 
-RegisterMapper(IdentityMapper)
+REGISTER_MAPPER(IdentityMapper)
 
 
 class SumReducer(BasicReducer):
     """SumReducer is a reducer that returns the sum of the values
     """
     
-    def Reduce(self, k,vs):
-        return sum(vs)
+    def reduce(self, key, values):
+        return sum(values)
 
-RegisterReducer(SumReducer)
+REGISTER_REDUCER(SumReducer)
 
 
 class FirstElementReducer(BasicReducer):
@@ -201,10 +197,10 @@ class FirstElementReducer(BasicReducer):
     others
     """
     
-    def Reduce(self, k, vs):
-        return vs[0]
+    def reduce(self, key, values):
+        return values[0]
 
-RegisterReducer(FirstElementReducer)
+REGISTER_REDUCER(FirstElementReducer)
 
 
 class NoPassReducer(BasicReducer):
@@ -213,9 +209,9 @@ class NoPassReducer(BasicReducer):
     "You shall not pass!" - Gandalf the Grey
     """
 
-    def Reduce(self, k,vs):
+    def reduce(self, key, values):
         pass
 
-RegisterReducer(NoPassReducer)
+REGISTER_REDUCER(NoPassReducer)
 
 

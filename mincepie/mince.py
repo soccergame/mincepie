@@ -3,6 +3,11 @@
 #
 # The communication part of this code is adapted from the original mincemeat 
 # code. For more details, please read the LICENSE file.
+# 
+# Usually you don't need to import mince in your own mapreduce code - instead,
+# import mapreducer to write your mappers, reducers, readers and writers, and
+# import launcher to launch the mapreduce job.
+#
 #
 # author: Yangqing Jia (jiayq84@gmail.com)
 
@@ -250,7 +255,7 @@ class Client(Protocol):
         if self.mapper is None:
             # create the mapper instance
             self.mapper = mapreducer.Mapper(FLAGS.mapper)()
-        for k, v in self.mapper.Map(data[0], data[1]):
+        for k, v in self.mapper.map(data[0], data[1]):
             try:
                 results[k].append(v)
             except KeyError:
@@ -266,7 +271,7 @@ class Client(Protocol):
         if self.reducer is None:
             # create the reducer instance
             self.reducer = mapreducer.Reducer(FLAGS.reducer)()
-        results = self.reducer.Reduce(data[0], data[1])
+        results = self.reducer.reduce(data[0], data[1])
         self.send_command(COMMAND.reducedone, (data[0], results))
         
     def process_command(self, command, data=None):
@@ -301,7 +306,7 @@ class Server(asyncore.dispatcher, object):
     datasource = property(get_datasource, set_datasource)
 
     def run_server(self, inputlist):
-        self.datasource = mapreducer.Reader(FLAGS.reader)().Read(inputlist)
+        self.datasource = mapreducer.Reader(FLAGS.reader)().read(inputlist)
         print self.datasource
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         self.bind(("", FLAGS.port))
@@ -312,7 +317,7 @@ class Server(asyncore.dispatcher, object):
             asyncore.close_all()
             raise
         logging.info("Mapreduce done.")
-        mapreducer.Writer(FLAGS.writer)().Write(self.taskmanager.results)
+        mapreducer.Writer(FLAGS.writer)().write(self.taskmanager.results)
 
     def handle_accept(self):
         pair = self.accept()
