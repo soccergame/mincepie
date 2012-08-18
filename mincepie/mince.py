@@ -63,23 +63,13 @@ TASK = Enum(['START',
 # general flags    
 gflags.DEFINE_boolean("server", False,
                       "If --server is specified, run in servermode.")
-# flags defined by Protocol
+# flags defined for connection
 gflags.DEFINE_string("password", "default",
                      "The password for server client authentication")
 gflags.DEFINE_integer("port", 11235, 
                       "The port number for the mapreduce task")
-# flags defined by Client
-gflags.DEFINE_string("mapper", "BasicMapper",
-                     "The mapper class for the mapreduce task")
-gflags.DEFINE_string("reducer", "BasicReducer",
-                     "The reducer class for the mapreduce task")
 gflags.DEFINE_string("address", "127.0.0.1",
                      "The address of the server")
-# flags defined by Server
-gflags.DEFINE_string("reader", "BasicReader",
-                     "The reader class for the mapreduce task")
-gflags.DEFINE_string("writer", "BasicWriter",
-                     "The reader class for the mapreduce task")
 # FLAGS
 FLAGS = gflags.FLAGS
 

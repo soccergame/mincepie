@@ -3,6 +3,22 @@
 author: Yangqing Jia (jiayq84@gmail.com)
 """
 
+import gflags
+
+
+# flags we are going to use
+gflags.DEFINE_string("mapper", "BasicMapper",
+                     "The mapper class for the mapreduce task")
+gflags.DEFINE_string("reducer", "BasicReducer",
+                     "The reducer class for the mapreduce task")
+gflags.DEFINE_string("reader", "BasicReader",
+                     "The reader class for the mapreduce task")
+gflags.DEFINE_string("writer", "BasicWriter",
+                     "The reader class for the mapreduce task")
+gflags.DEFINE_string("output", "",
+                     "The string passed to the writer")
+FLAGS = gflags.FLAGS
+
 
 # Register methods
 # These methods allow you to register your mapper, reducer, reader and writers
@@ -104,7 +120,8 @@ REGISTER_REDUCER(BasicReducer)
 class BasicReader(object):
     """The basic reader class
 
-    All your readers are belong to this.
+    The basic reader basically takes in whatever is from the inputlist, and
+    emits each one as a value. The key wound be the index in of the list.
     """
     def __init__(self):
         self.set_up()
@@ -122,7 +139,7 @@ class BasicReader(object):
         Output:
             a dictionary containing (key,value) pairs.
         """
-        raise NotImplementedError
+        return dict(enumerate(inputlist))
 
 REGISTER_READER(BasicReader)
 
@@ -130,7 +147,7 @@ REGISTER_READER(BasicReader)
 class BasicWriter(object):
     """The basic writer class
 
-    Different from the mapper, reducer, reader base classes, you can directly
+    Different from the mapper and reducer base classes, you can directly
     use BasicWriter - it simply spits all the dictionary entries.
     """
     def __init__(self):
@@ -150,7 +167,7 @@ class BasicWriter(object):
             a dictionary containing (key,value) pairs.
         """
         for key in result:
-            print key, ":", result[key]
+            print key, ":", repr(result[key])
 
 REGISTER_WRITER(BasicWriter)
 
@@ -198,3 +215,26 @@ class NoPassReducer(BasicReducer):
 REGISTER_REDUCER(NoPassReducer)
 
 
+class FileReader(BasicReader):
+    """This reader reads the content of the input files, and put each line as
+    a value. The key is in the format filename:lineid
+    """
+    def read(self, inputlist):
+        data = {}
+        for filename in inputlist:
+            with open(filename, 'r') as fid:
+                for id, line in enumerate(fid):
+                    data[filename+str(id)] = line
+        return data
+
+REGISTER_READER(FileReader)
+
+class DumpToFileWriter(BasicWriter):
+    """The class that dumps the key values pair to FLAGS.output
+    """
+    def write(self, result):
+        with open(FLAGS.output,'w') as fid:
+            for key in result:
+                fid.write(key + ":" + repr(result[key])+'\n')
+
+REGISTER_WRITER(DumpToFileWriter)

@@ -1,18 +1,8 @@
-from mincepie import mapreducer, launcher
-
-class WordCountMapper(mapreducer.BasicMapper):
-    def map(self, k, v):
-        for word in v.split():
-            yield word, 1
-
-mapreducer.REGISTER_MAPPER(WordCountMapper)
-
-
-class WordCountReducer(mapreducer.BasicReducer):
-    def reduce(self, k, v):
-        return sum(v)
-
-mapreducer.REGISTER_REDUCER(WordCountReducer)
+"""A demo that does wordcount on the zen of python. The text is directly
+obtained from 
+"""
+from mincepie import mapreducer, launcher, wordcount
+import time
 
 
 class ZenReader(mapreducer.BasicReader):
@@ -45,6 +35,6 @@ mapreducer.REGISTER_READER(ZenReader)
 
 if __name__ == "__main__":
     import logging
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     launcher.launch_mpi()
 
