@@ -223,8 +223,8 @@ class FileReader(BasicReader):
         data = {}
         for filename in inputlist:
             with open(filename, 'r') as fid:
-                for id, line in enumerate(fid):
-                    data[filename+str(id)] = line
+                for index, line in enumerate(fid):
+                    data[filename+":"+str(index)] = line.strip()
         return data
 
 REGISTER_READER(FileReader)

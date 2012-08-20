@@ -62,14 +62,16 @@ TASK = Enum(['START',
 
 # general flags    
 gflags.DEFINE_boolean("server", False,
-                      "If --server is specified, run in servermode.")
+    "If --server is specified, run in servermode.")
 # flags defined for connection
 gflags.DEFINE_string("password", "default",
-                     "The password for server client authentication")
+    "The password for server client authentication")
 gflags.DEFINE_integer("port", 11235, 
-                      "The port number for the mapreduce task")
+    "The port number for the mapreduce task")
 gflags.DEFINE_string("address", "127.0.0.1",
-                     "The address of the server")
+    "The address of the server")
+gflags.DEFINE_integer("timeout", 60,
+    "The number of seconds before a client stops reconnecting")
 # FLAGS
 FLAGS = gflags.FLAGS
 
@@ -225,15 +227,20 @@ class Client(Protocol):
             address = FLAGS.address
         logging.debug("Connecting to %s:%d" % (address, FLAGS.port))
         # connect, with possible failure
-        while not self.connected:
+        time_spent = 0
+        while (not self.connected) and time_spent < FLAGS.timeout:
             try:
                 logging.debug('Trying to connect...')
                 self.connect((address, FLAGS.port))
             except socket.error, message:
                 logging.debug("Conection failed, retry...")
                 time.sleep(CONNECTION_WAIT_TIME)
-        logging.debug('Connected!')
-        asyncore.loop()
+                time_spent += CONNECTION_WAIT_TIME
+        if self.connected:
+            logging.debug('Connected!')
+            asyncore.loop()
+        else:
+            self.close()
 
     def handle_connect(self):
         pass

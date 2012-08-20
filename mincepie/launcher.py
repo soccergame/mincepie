@@ -21,7 +21,7 @@ def process_argv(argv):
     try:
         # parse flags
         inputlist = gflags.FLAGS(argv)
-        return inputlist
+        return inputlist[1:]
     except gflags.FlagsError, message:
         print '%s\\nUsage: %s ARGS\\n%s' % (message, argv[0], gflags.FLAGS)
         sys.exit(1)
@@ -67,6 +67,10 @@ def launch_mpi(argv = None):
         # server mode
         server = mince.Server()
         server.run_server(inputlist)
+        # after the server finishes running, tere might be
+        # some clients still running, and MPI does not exit very elegantly. 
+        # However, with asynchat and the current implementation we have no 
+        # trace of running clients, so this is probably inevitable.
     else:
         # client mode
         client = mince.Client()
