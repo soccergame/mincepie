@@ -4,7 +4,7 @@ author: Yangqing Jia (jiayq84@gmail.com)
 """
 
 import gflags
-
+import glob
 
 # flags we are going to use
 gflags.DEFINE_string("mapper", "BasicMapper",
@@ -17,6 +17,8 @@ gflags.DEFINE_string("writer", "BasicWriter",
                      "The reader class for the mapreduce task")
 gflags.DEFINE_string("output", "",
                      "The string passed to the writer")
+gflags.DEFINE_string("input", None,
+                     "The input pattern.")
 FLAGS = gflags.FLAGS
 
 
@@ -131,14 +133,18 @@ class BasicReader(object):
         """
         pass
 
-    def read(self, inputlist):
-        """Reads the inputlist
+    def read(self, input):
+        """Reads the input
 
         Input:
-            inputlist: a list of strings obtained from commandline arguments
+            input: a string obtained from commandline argument --input
         Output:
             a dictionary containing (key,value) pairs.
+        The default BasicReader assumes that the input is a string specifying
+        a certain file pattern, uses glob to retrieve a list of files, and 
+        emits each filename. The key would be an index starting from 0.
         """
+        inputlist = glob.glob(input)
         return dict(enumerate(inputlist))
 
 REGISTER_READER(BasicReader)
@@ -219,7 +225,8 @@ class FileReader(BasicReader):
     """This reader reads the content of the input files, and put each line as
     a value. The key is in the format filename:lineid
     """
-    def read(self, inputlist):
+    def read(self, input):
+        inputlist = glob.glob(input)
         data = {}
         for filename in inputlist:
             with open(filename, 'r') as fid:
@@ -229,7 +236,8 @@ class FileReader(BasicReader):
 
 REGISTER_READER(FileReader)
 
-class DumpToFileWriter(BasicWriter):
+
+class FileWriter(BasicWriter):
     """The class that dumps the key values pair to FLAGS.output
     """
     def write(self, result):
@@ -237,4 +245,4 @@ class DumpToFileWriter(BasicWriter):
             for key in result:
                 fid.write(key + ":" + repr(result[key])+'\n')
 
-REGISTER_WRITER(DumpToFileWriter)
+REGISTER_WRITER(FileWriter)

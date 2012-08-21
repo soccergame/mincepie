@@ -42,3 +42,14 @@ class WordCountReducer(mapreducer.BasicReducer):
 
 mapreducer.REGISTER_REDUCER(WordCountReducer)
 
+
+if __name__ == "__main__":
+    print """To run this, execute with:
+    python -m mincepie --module wordcount 
+           --mapper WordCountFromFileMapper 
+           --reducer WordCountReducer --server
+and
+    python -m mincepie --module wordcount 
+           --mapper WordCountFromFileMapper 
+           --reducer WordCountReducer --server
+    """

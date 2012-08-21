@@ -12,6 +12,12 @@ from mincepie import mince
 import socket
 import sys
 
+gflags.DEFINE_string("module", None,
+                     "The module that contains the mapper and reducer classes.")
+gflags.DEFINE_string("module", None,
+                     "The module that contains the mapper and reducer classes.")
+FLAGS = gflags.FLAGS
+
 
 def process_argv(argv):
     """processes the arguments using gflags
@@ -32,11 +38,13 @@ def launch(argv=None):
 
     If --server is set, run in server mode; otherwise, run in client mode
     """
-    inputlist = process_argv(argv)
+    process_argv(argv)
+    if FLAGS.module is not None:
+        __import__(FLAGS.module)
     if gflags.FLAGS.server:
         # server mode
         server = mince.Server()
-        server.run_server(inputlist)
+        server.run_server()
     else:
         # client mode
         client = mince.Client()
@@ -59,14 +67,16 @@ def launch_mpi(argv = None):
     if comm.Get_size() == 1:
         print 'You need to specify more than one MPI host.'
         sys.exit(1)
-    inputlist = process_argv(argv)
+    process_argv(argv)
+    if FLAGS.module is not None:
+        __import__(FLAGS.module)
     # get the server address
     address = socket.gethostbyname(socket.gethostname())
     address = comm.bcast(address)
     if comm.Get_rank() == 0:
         # server mode
         server = mince.Server()
-        server.run_server(inputlist)
+        server.run_server()
         # after the server finishes running, tere might be
         # some clients still running, and MPI does not exit very elegantly. 
         # However, with asynchat and the current implementation we have no 

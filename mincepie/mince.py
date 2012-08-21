@@ -213,7 +213,6 @@ class Client(Protocol):
         Protocol.__init__(self)
         self.mapper = None
         self.reducer = None
-        self.address = None
 
     def run_client(self, address = None):
         """Runs the client
@@ -222,18 +221,23 @@ class Client(Protocol):
         flags. Otherwise (e.g. we are running the whole mapreduce under MPI),
         the server address is the passed-in address.
         """
-        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         if address is None:
             address = FLAGS.address
         logging.debug("Connecting to %s:%d" % (address, FLAGS.port))
         # connect, with possible failure
         time_spent = 0
+        self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.connect((address, FLAGS.port))
         while (not self.connected) and time_spent < FLAGS.timeout:
             try:
-                logging.debug('Trying to connect...')
                 self.connect((address, FLAGS.port))
             except socket.error, message:
-                logging.debug("Conection failed, retry...")
+                logging.debug("Conection failed, retry... " + str(message))
+                # Calling __init__ is quite ugly, but there seems to be some 
+                # rumor that asynchat has bugs dealing with socket error, and
+                # this works now... Should investigate in the future.
+                self.__init__()
+                self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
                 time.sleep(CONNECTION_WAIT_TIME)
                 time_spent += CONNECTION_WAIT_TIME
         if self.connected:
@@ -310,11 +314,14 @@ class Server(asyncore.dispatcher, object):
 
     datasource = property(get_datasource, set_datasource)
 
-    def run_server(self, inputlist):
-        self.datasource = mapreducer.READER(FLAGS.reader)().read(inputlist)
+    def run_server(self):
+        logging.info("Starting server.")
+        self.datasource = mapreducer.READER(FLAGS.reader)().read(FLAGS.input)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
+        print self.datasource
         self.bind(("", FLAGS.port))
         self.listen(1)
+        logging.info("Starting listening on %d" % (FLAGS.port))
         try:
             asyncore.loop()
         except:
