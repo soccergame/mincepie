@@ -5,6 +5,7 @@ author: Yangqing Jia (jiayq84@gmail.com)
 
 import gflags
 import glob
+import logging
 
 # flags we are going to use
 gflags.DEFINE_string("mapper", "BasicMapper",
@@ -49,7 +50,12 @@ REGISTER_WRITER  = lambda writer:  _register(_WRITERS,  writer)
 def _get_registered(source_dict, name):
     """Get the registered object from the dictionary
     """
-    return source_dict[name]
+    try:
+        return source_dict[name]
+    except KeyError:
+        logging.fatal("Cannot find key " + name + " from:")
+        logging.fatal(str(source_dict))
+        raise
 
 MAPPER  = lambda name: _get_registered(_MAPPERS,  name)
 REDUCER = lambda name: _get_registered(_REDUCERS, name)

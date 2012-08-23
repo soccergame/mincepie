@@ -8,14 +8,15 @@ author: Yangqing Jia (jiayq84@gmail.com)
 
 # python modules
 import gflags
+import logging
 from mincepie import mince
 import socket
 import sys
 
 gflags.DEFINE_string("module", None,
                      "The module that contains the mapper and reducer classes.")
-gflags.DEFINE_string("module", None,
-                     "The module that contains the mapper and reducer classes.")
+gflags.DEFINE_integer("loglevel", 40,
+                  "The level for logging. 20 for INFO and 10 for DEBUG.")
 FLAGS = gflags.FLAGS
 
 
@@ -27,10 +28,14 @@ def process_argv(argv):
     try:
         # parse flags
         inputlist = gflags.FLAGS(argv)
-        return inputlist[1:]
     except gflags.FlagsError, message:
         print '%s\\nUsage: %s ARGS\\n%s' % (message, argv[0], gflags.FLAGS)
         sys.exit(1)
+    # set some common stuff
+    if FLAGS.module is not None:
+        __import__(FLAGS.module)
+    logging.basicConfig(level=FLAGS.loglevel)
+    return inputlist[1:]
 
 
 def launch(argv=None):
@@ -39,8 +44,6 @@ def launch(argv=None):
     If --server is set, run in server mode; otherwise, run in client mode
     """
     process_argv(argv)
-    if FLAGS.module is not None:
-        __import__(FLAGS.module)
     if gflags.FLAGS.server:
         # server mode
         server = mince.Server()
@@ -68,8 +71,6 @@ def launch_mpi(argv = None):
         print 'You need to specify more than one MPI host.'
         sys.exit(1)
     process_argv(argv)
-    if FLAGS.module is not None:
-        __import__(FLAGS.module)
     # get the server address
     address = socket.gethostbyname(socket.gethostname())
     address = comm.bcast(address)
