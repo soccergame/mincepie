@@ -6,11 +6,12 @@ author: Yangqing Jia (jiayq84@gmail.com)
 import gflags
 import glob
 import logging
+import sys
 
 # flags we are going to use
-gflags.DEFINE_string("mapper", "BasicMapper",
+gflags.DEFINE_string("mapper", "",
                      "The mapper class for the mapreduce task")
-gflags.DEFINE_string("reducer", "BasicReducer",
+gflags.DEFINE_string("reducer", "",
                      "The reducer class for the mapreduce task")
 gflags.DEFINE_string("reader", "BasicReader",
                      "The reader class for the mapreduce task")
@@ -18,7 +19,7 @@ gflags.DEFINE_string("writer", "BasicWriter",
                      "The reader class for the mapreduce task")
 gflags.DEFINE_string("output", "",
                      "The string passed to the writer")
-gflags.DEFINE_string("input", None,
+gflags.DEFINE_string("input", "",
                      "The input pattern.")
 FLAGS = gflags.FLAGS
 
@@ -36,26 +37,44 @@ _MAPPERS  = {}
 _REDUCERS = {}
 _READERS  = {}
 _WRITERS  = {}
+_DEFAULT_NAME = '_default'
 
 def _register(target_dict, object_to_register):
     """The basic registerer
     """
     target_dict[object_to_register.__name__] = object_to_register
 
-REGISTER_MAPPER  = lambda mapper:  _register(_MAPPERS,  mapper)
-REGISTER_REDUCER = lambda reducer: _register(_REDUCERS, reducer)
-REGISTER_READER  = lambda reader:  _register(_READERS,  reader)
-REGISTER_WRITER  = lambda writer:  _register(_WRITERS,  writer)
+def _register_default(target_dict, object_to_register):
+    """In addition to registering the name, we also register it as default.
+    """
+    _register(target_dict, object_to_register)
+    target_dict[_DEFAULT_NAME] = object_to_register
+
+REGISTER_MAPPER  = lambda x: _register(_MAPPERS,  x)
+REGISTER_REDUCER = lambda x: _register(_REDUCERS, x)
+REGISTER_READER  = lambda x: _register(_READERS,  x)
+REGISTER_WRITER  = lambda x: _register(_WRITERS,  x)
+# If you are tired of registering objects and setting them again in the 
+# commandline arguments, register them as default - note that this will
+# override the previously registered default object.
+REGISTER_DEFAULT_MAPPER  = lambda x: _register_default(_MAPPERS,  x)
+REGISTER_DEFAULT_REDUCER = lambda x: _register_default(_REDUCERS, x)
+REGISTER_DEFAULT_READER  = lambda x: _register_default(_READERS,  x)
+REGISTER_DEFAULT_WRITER  = lambda x: _register_default(_WRITERS,  x)
+
 
 def _get_registered(source_dict, name):
     """Get the registered object from the dictionary
     """
     try:
-        return source_dict[name]
-    except KeyError:
-        logging.fatal("Cannot find key " + name + " from:")
+        if name is None or name == "":
+            return source_dict[_DEFAULT_NAME]
+        else:
+            return source_dict[name]
+    except KeyError, key:
+        logging.fatal("Cannot find key " + key + " from:")
         logging.fatal(str(source_dict))
-        raise
+        sys.exit(1)
 
 MAPPER  = lambda name: _get_registered(_MAPPERS,  name)
 REDUCER = lambda name: _get_registered(_REDUCERS, name)
@@ -139,7 +158,7 @@ class BasicReader(object):
         """
         pass
 
-    def read(self, input):
+    def read(self, input_string):
         """Reads the input
 
         Input:
@@ -150,7 +169,7 @@ class BasicReader(object):
         a certain file pattern, uses glob to retrieve a list of files, and 
         emits each filename. The key would be an index starting from 0.
         """
-        inputlist = glob.glob(input)
+        inputlist = glob.glob(input_string)
         return dict(enumerate(inputlist))
 
 REGISTER_READER(BasicReader)
@@ -231,8 +250,8 @@ class FileReader(BasicReader):
     """This reader reads the content of the input files, and put each line as
     a value. The key is in the format filename:lineid
     """
-    def read(self, input):
-        inputlist = glob.glob(input)
+    def read(self, input_string):
+        inputlist = glob.glob(input_string)
         data = {}
         for filename in inputlist:
             with open(filename, 'r') as fid:
