@@ -13,8 +13,6 @@ from mincepie import mince
 import socket
 import sys
 
-gflags.DEFINE_string("module", None,
-                     "The module that contains the mapper and reducer classes.")
 gflags.DEFINE_integer("loglevel", 40,
                   "The level for logging. 20 for INFO and 10 for DEBUG.")
 FLAGS = gflags.FLAGS
@@ -32,8 +30,6 @@ def process_argv(argv):
         print '%s\\nUsage: %s ARGS\\n%s' % (message, argv[0], gflags.FLAGS)
         sys.exit(1)
     # set some common stuff
-    if FLAGS.module is not None:
-        __import__(FLAGS.module)
     logging.basicConfig(level=FLAGS.loglevel)
     return inputlist[1:]
 
