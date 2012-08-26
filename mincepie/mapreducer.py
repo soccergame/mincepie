@@ -189,9 +189,19 @@ class IdentityMapper(BasicMapper):
     """
 
     def map(self, key, value):
-        return key, value
+        yield key, value
 
 REGISTER_MAPPER(IdentityMapper)
+
+
+class IdentityReducer(BasicReducer):
+    """IdentityReducer is a reducer that simply emits the same key value pair
+    """
+    
+    def reduce(self, key, values):
+        return values
+
+REGISTER_REDUCER(IdentityReducer)
 
 
 class SumReducer(BasicReducer):
@@ -216,13 +226,13 @@ REGISTER_REDUCER(FirstElementReducer)
 
 
 class NoPassReducer(BasicReducer):
-    """This reducer ignores all input keyvalue pairs.
+    """This reducer complains if anything is ever passed to it.
     
     "You shall not pass!" - Gandalf the Grey
     """
 
     def reduce(self, key, values):
-        pass
+        raise ValueError, "You shall not pass!"
 
 REGISTER_REDUCER(NoPassReducer)
 

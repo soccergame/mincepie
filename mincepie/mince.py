@@ -318,7 +318,8 @@ class Server(asyncore.dispatcher, object):
         logging.info("Starting server.")
         self.datasource = mapreducer.READER(FLAGS.reader)().read(FLAGS.input)
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
-        print self.datasource
+        logging.info("Number of input key value pairs: %d " % \
+                     (len(self.datasource.keys())))
         self.bind(("", FLAGS.port))
         self.listen(1)
         logging.info("Starting listening on %d" % (FLAGS.port))
@@ -387,6 +388,8 @@ class ServerChannel(Protocol):
 class TaskManager(object):
     def __init__(self, datasource, server):
         self.datasource = datasource
+        self.num_maps = len(self.datasource.keys())
+        self.num_done_maps = 0
         self.server = server
         self.state = TASK.START
 
@@ -443,16 +446,27 @@ class TaskManager(object):
         # Don't use the results if they've already been counted
         if not data[0] in self.working_maps:
             return
-        for (key, values) in data[1].iteritems():
-            if key not in self.map_results:
-                self.map_results[key] = []
-            self.map_results[key].extend(values)
+        self.num_done_maps += 1 
+        logging.debug('Map done (%d / %d): ' 
+                            % (self.num_maps, self.num_done_maps)
+                      + data[0])
+        # for logging.info, we only output the reports periodically
+        if self.num_done_maps * 10 / self.num_maps > \
+                (self.num_done_maps-1) * 10 / self.num_maps:
+            logging.info("%d%% maps done." % \
+                         (self.num_done_maps * 100 / self.num_maps))
+        if data[1] is not None:
+            for (key, values) in data[1].iteritems():
+                if key not in self.map_results:
+                    self.map_results[key] = []
+                self.map_results[key].extend(values)
         del self.working_maps[data[0]]
                                 
     def reduce_done(self, data):
         # Don't use the results if they've already been counted
         if not data[0] in self.working_reduces:
             return
+        logging.debug('Reduce done: ' + data[0])
         self.results[data[0]] = data[1]
         del self.working_reduces[data[0]]
 
