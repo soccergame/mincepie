@@ -72,7 +72,7 @@ def _get_registered(source_dict, name):
         else:
             return source_dict[name]
     except KeyError, key:
-        logging.fatal("Cannot find key " + key + " from:")
+        logging.fatal("Cannot find registered name " + name + " from:")
         logging.fatal(str(source_dict))
         sys.exit(1)
 
