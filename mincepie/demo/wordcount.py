@@ -3,7 +3,7 @@
 This is a sample implementation of simple mappers and reducers that does
 wordcount. See the word count demos in demos/ for details.
 """
-from mincepie import mapreducer
+from mincepie import mapreducer, launcher
 
 
 class WordCountMapper(mapreducer.BasicMapper):
@@ -31,7 +31,7 @@ class WordCountFromFileMapper(mapreducer.BasicMapper):
                 for word in line.split():
                     yield word, 1
 
-mapreducer.REGISTER_MAPPER(WordCountFromFileMapper)
+mapreducer.REGISTER_DEFAULT_MAPPER(WordCountFromFileMapper)
 
 
 class WordCountReducer(mapreducer.BasicReducer):
@@ -40,16 +40,8 @@ class WordCountReducer(mapreducer.BasicReducer):
     def reduce(self, key, value):
         return sum(value)
 
-mapreducer.REGISTER_REDUCER(WordCountReducer)
+mapreducer.REGISTER_DEFAULT_REDUCER(WordCountReducer)
 
 
 if __name__ == "__main__":
-    print """To run this, execute with:
-    python -m mincepie --module wordcount 
-           --mapper WordCountFromFileMapper 
-           --reducer WordCountReducer --server
-and
-    python -m mincepie --module wordcount 
-           --mapper WordCountFromFileMapper 
-           --reducer WordCountReducer --server
-    """
+    launcher.launch()
