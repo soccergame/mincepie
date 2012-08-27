@@ -2,3 +2,4 @@
 *.pyc
 mincemeatpy-*.tar.gz
 build/
+.DS_Store
