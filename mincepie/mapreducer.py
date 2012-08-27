@@ -42,6 +42,10 @@ _DEFAULT_NAME = '_default'
 def _register(target_dict, object_to_register):
     """The basic registerer
     """
+    if object_to_register.__name__ in target_dict:
+        logging.fatal("Name " + name + " already registered:")
+        logging.fatal(str(target_dict))
+        sys.exit(1)
     target_dict[object_to_register.__name__] = object_to_register
 
 def _register_default(target_dict, object_to_register):
