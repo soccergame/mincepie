@@ -13,10 +13,10 @@ the Matlab start and finish overhead, it's probably not a good idea to
 distribute your job.
 """
 
-from mincepie import mapreducer
+from mincepie import mapreducer, launcher
 from subprocess import Popen, PIPE
 
-_config = {'matlab_bin': 'matlab',
+_CONFIG = {'matlab_bin': 'matlab',
            'args': ['-nodesktop','-nosplash','-nojvm','-singleCompThread']
           }
 _SUCCESS_STR = '__mincepie.matlab.success__'
@@ -27,9 +27,9 @@ def set_config(key, value):
     """Sets the config of matlab
     
     For example, you can set your own matlab bin:
-    set_config('matlab_bin','/path/to/your/matlab/bin/matlab')
+    set_CONFIG('matlab_bin','/path/to/your/matlab/bin/matlab')
     """
-    _config[key] = value
+    _CONFIG[key] = value
 
 
 def wrap_command(command):
@@ -43,7 +43,7 @@ def wrap_command(command):
     if type(command) is not list:
         command = [command]
     return ";\n".join(["try"] + command + [
-        "fprintf(2,'%s')" % (_SUCCESS_STR)
+        "fprintf(2,'%s')" % (_SUCCESS_STR),
         "catch ME",
         "disp(ME)",
         "disp(ME.stack)",
@@ -52,7 +52,7 @@ def wrap_command(command):
         ])
 
 
-SimpleMatlabMapper(mapreducer.BasicMapper):
+class SimpleMatlabMapper(mapreducer.BasicMapper):
     """The class that performs wordcount map
     
     The input value of this mapper should be a string containing the words
@@ -63,9 +63,9 @@ SimpleMatlabMapper(mapreducer.BasicMapper):
         
         Example:
             def make_command(self, key, value):
-                return ["fprintf('%s: %s\n')" % (key, value)]
+                return ["fprintf('%s: %s\\n')" % (key, value)]
         """
-        raise NotImplementedError
+        return ["fprintf('%s: %s\\n')" % (key, value)]
 
     def map(self, key, value):
         """ The map function of SimpleMatlabMapper and its derivatives.
@@ -73,30 +73,30 @@ SimpleMatlabMapper(mapreducer.BasicMapper):
         Do NOT override this with your own map() function - instead, write
         your own make_command(self, key, value) function.
         """
-        command = wrap_command(self.make_command(key, vale))
+        command = wrap_command(self.make_command(key, value))
         try:
-            proc = Popen([_config['matlab_bin']] + _config['args'],
+            proc = Popen([_CONFIG['matlab_bin']] + _CONFIG['args'],
                          stdin = PIPE, stdout = PIPE, stderr = PIPE)
         except OSError, errmsg:
             # if we catch OSError, we return the error for investigation
-            yield key, (False, errmsg)
+            yield key, (False, errmsg, command)
         # pass the command to Matlab. 
         try:
             str_out, str_err = proc.communicate(command)
         except Exception, errmsg:
             # if proc.communicate encounters some error, return the error
-            yield key, (False, errmsg)
+            yield key, (False, errmsg, command)
         # now, parse stderr to see whether we succeeded
         if str_err.endswith(_SUCCESS_STR):
             yield key, (True, str_out, str_err)
         else:
-            yield key, (False, str_out, std_err)
+            yield key, (False, str_out, str_err, command)
 
 mapreducer.REGISTER_MAPPER(SimpleMatlabMapper)
 
 
 SimpleMatlabReducer = mapreducer.IdentityReducer
-mapreducer.REGISTER_REDUCER(SimpleMatlabReducer)
+mapreducer.REGISTER_DEFAULT_REDUCER(SimpleMatlabReducer)
 
 
 if __name__ == "__main__":
