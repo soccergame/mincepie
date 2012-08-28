@@ -58,6 +58,7 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
     The input value of this mapper should be a string containing the words
     to be counted
     """
+    # pylint: disable=R0201
     def make_command(self, key, value):
         """Make the Matlab command. You need to implement this in your code
         
@@ -83,10 +84,13 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
         # pass the command to Matlab. 
         try:
             str_out, str_err = proc.communicate(command)
+        # any exception inside the proc call will trigger the fail case.
+        # pylint: disable=W0703
         except Exception, errmsg:
             # if proc.communicate encounters some error, return the error
             yield key, (False, errmsg, command)
         # now, parse stderr to see whether we succeeded
+        # pylint: disable=E1103
         if str_err.endswith(_SUCCESS_STR):
             yield key, (True, str_out, str_err)
         else:
@@ -94,9 +98,7 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
 
 mapreducer.REGISTER_MAPPER(SimpleMatlabMapper)
 
-
-SimpleMatlabReducer = mapreducer.IdentityReducer
-mapreducer.REGISTER_DEFAULT_REDUCER(SimpleMatlabReducer)
+mapreducer.REGISTER_DEFAULT_REDUCER(mapreducer.IdentityReducer)
 
 
 if __name__ == "__main__":
