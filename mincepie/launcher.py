@@ -8,9 +8,11 @@ author: Yangqing Jia (jiayq84@gmail.com)
 
 # python modules
 import gflags
+import hashlib
 import logging
 from mincepie import mince
 from multiprocessing import Process
+import time
 import socket
 from subprocess import Popen, PIPE
 import sys
@@ -25,9 +27,11 @@ gflags.DEFINE_integer("slurm_numjobs", 0,
 gflags.DEFINE_string("slurm_shebang", "#!/bin/bash",
         "The shebang of the slurm batch script")
 gflags.DEFINE_string("slurm_python_bin", "python",
-        "The path to the python program for slurm")
+        "The command to call python")
 gflags.DEFINE_string("sbatch_bin", "sbatch",
-        "The command to be passed to sbatch")
+        "The command to call sbatch")
+gflags.DEFINE_string("scancel_bin", "scancel",
+        "The command to call scancel")
 gflags.DEFINE_string("sbatch_args", "",
         "The sbatch arguments")
 FLAGS = gflags.FLAGS
@@ -92,6 +96,8 @@ def launch_slurm(argv):
                    FLAGS.slurm_python_bin,
                    " ".join(argv),
                    address)
+    jobname = hashlib.md5(argv[0] + str(FLAGS.port) + str(time.time()))\
+                     .hexdigest()
     if (FLAGS.slurm_numjobs <= 0):
         logging.fatal("The number of slurm clients should be positive.")
         sys.exit(1)
@@ -105,7 +111,7 @@ def launch_slurm(argv):
     logging.info('Submitting slurm jobs.')
     logging.info('Command:\n'+command)
     for i in range(FLAGS.slurm_numjobs):
-        args = [FLAGS.sbatch_bin]
+        args = [FLAGS.sbatch_bin, '--job-name=%s' % (jobname,)]
         if FLAGS.sbatch_args != "":
             args += FLAGS.sbatch_args.split(" ")
         proc = Popen(args, stdin = PIPE, stdout = PIPE, stderr = PIPE)
@@ -120,6 +126,12 @@ def launch_slurm(argv):
             logging.debug("Slurm job #%d: " % (i) + out.strip())
     # wait for server process to finish
     serverprocess.join()
+    logging.debug("Removing any pending jobs.")
+    proc = Popen([FLAGS.scancel_bin, '--name=%s' % (jobname,)],
+                stdin = PIPE, stdout = PIPE, stderr = PIPE)
+    # Here we simply do a communicate and discard the results
+    # We may want to handle the case when scancel fails?
+    proc.communicate()
     return
 
 def launch_mpi():
