@@ -13,8 +13,11 @@ from mincepie import mince
 import socket
 import sys
 
+# general flags    
+gflags.DEFINE_boolean("server", False,
+        "If --server is specified, run in servermode.")
 gflags.DEFINE_integer("loglevel", 40,
-                  "The level for logging. 20 for INFO and 10 for DEBUG.")
+        "The level for logging. 20 for INFO and 10 for DEBUG.")
 FLAGS = gflags.FLAGS
 
 

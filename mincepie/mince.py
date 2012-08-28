@@ -60,9 +60,7 @@ TASK = Enum(['START',
              'FINISHED',
             ])
 
-# general flags    
-gflags.DEFINE_boolean("server", False,
-    "If --server is specified, run in servermode.")
+
 # flags defined for connection
 gflags.DEFINE_string("password", "default",
     "The password for server client authentication")

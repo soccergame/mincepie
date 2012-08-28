@@ -71,7 +71,7 @@ def _get_registered(source_dict, name):
             return source_dict[_DEFAULT_NAME]
         else:
             return source_dict[name]
-    except KeyError, key:
+    except KeyError:
         logging.fatal("Cannot find registered name " + name + " from:")
         logging.fatal(str(source_dict))
         sys.exit(1)
@@ -158,6 +158,7 @@ class BasicReader(object):
         """
         pass
 
+    # pylint: disable=R0201
     def read(self, input_string):
         """Reads the input
 
@@ -189,6 +190,7 @@ class BasicWriter(object):
         """
         pass
 
+    # pylint: disable=R0201
     def write(self, result):
         """Writes the result
 

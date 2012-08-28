@@ -10,10 +10,11 @@ causes additional overhead (several seconds, based on your Matlab config).
 Thus, it should mostly be used to carry out computation-intensive map tasks
 each lasting more than a few seconds. If your map() runs much shorter than
 the Matlab start and finish overhead, it's probably not a good idea to
-distribute your job.
+distribute your job, or you need to at least combine multiple small jobs in 
+a larger map() call.
 """
 
-from mincepie import mapreducer, launcher
+from mincepie import mapreducer
 from subprocess import Popen, PIPE
 
 _CONFIG = {'matlab_bin': 'matlab',
@@ -53,10 +54,11 @@ def wrap_command(command):
 
 
 class SimpleMatlabMapper(mapreducer.BasicMapper):
-    """The class that performs wordcount map
+    """A simple Matlab Mapper that uses subprocess to run Matlab.
     
-    The input value of this mapper should be a string containing the words
-    to be counted
+    To write your own Matlab mapper, make a derivative of SimpleMatlabMapper,
+    and implement the make_command() function. Do NOT overwrite map() as you
+    will usually do for python mappers.
     """
     # pylint: disable=R0201
     def make_command(self, key, value):
@@ -98,8 +100,10 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
 
 mapreducer.REGISTER_MAPPER(SimpleMatlabMapper)
 
+# Usually you shouldn't need a reducer for Matlab, but if you want, you can
+# implement one as well.
 mapreducer.REGISTER_DEFAULT_REDUCER(mapreducer.IdentityReducer)
 
 
 if __name__ == "__main__":
-    launcher.launch()
+    print __doc__
