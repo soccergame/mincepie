@@ -16,18 +16,18 @@ author: Yangqing Jia (jiayq84@gmail.com)
 import asynchat
 import asyncore
 import cPickle as pickle
+import datetime
 import gflags
 import hashlib
 import hmac
 import logging
+from mincepie import mapreducer
 import os
 import random
 import socket
 import sys
 import time
 
-# local modules
-from mincepie import mapreducer
 
 # constant variables
 VERSION = "0.0.1"
@@ -349,7 +349,7 @@ class ServerChannel(Protocol):
         self.start_auth()
 
     def handle_close(self):
-        logging.info("Client %s disconnected" % (self.addr))
+        logging.debug("Client %s disconnected" % (self.addr))
         self.close()
 
     def start_auth(self):
@@ -400,6 +400,7 @@ class TaskManager(object):
             self.working_maps = {}
             self.map_results = {}
             logging.info("Start map phase.")
+            self.map_start_time = time.time()
             self.state = TASK.MAPPING
         
         if self.state == TASK.MAPPING:
@@ -445,14 +446,16 @@ class TaskManager(object):
         if not data[0] in self.working_maps:
             return
         self.num_done_maps += 1 
-        logging.debug('Map done (%d / %d): ' 
-                            % (self.num_done_maps, self.num_maps)
-                      + str(data[0]))
+        logging.debug('Map done (%d / %d): %s ' \
+                      % (self.num_done_maps, self.num_maps, str(data[0])))
         # for logging.info, we only output the reports periodically
         if self.num_done_maps * 10 / self.num_maps > \
                 (self.num_done_maps-1) * 10 / self.num_maps:
-            logging.info("%d%% maps done." % \
-                         (self.num_done_maps * 100 / self.num_maps))
+            elapsed = datetime.timedelta(
+                    seconds=time.time() - self.map_start_time)
+            logging.info("%d%% maps done. Elapsed %s." \
+                         % (self.num_done_maps * 100 / self.num_maps,
+                            str(elapsed)))
         if data[1] is not None:
             for (key, values) in data[1].iteritems():
                 if key not in self.map_results:
