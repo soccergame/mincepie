@@ -334,7 +334,7 @@ class Server(asyncore.dispatcher, object):
         if pair is None:
             pass
         conn, addr = pair
-        logging.info("New client arrived at " + str(addr))
+        logging.debug("New client arrived at " + str(addr))
         sc = ServerChannel(conn, addr, self)
 
     def handle_close(self):
@@ -464,7 +464,7 @@ class TaskManager(object):
         # Don't use the results if they've already been counted
         if not data[0] in self.working_reduces:
             return
-        logging.debug('Reduce done: ' + data[0])
+        logging.debug('Reduce done: ' + repr(data[0]))
         self.results[data[0]] = data[1]
         del self.working_reduces[data[0]]
 

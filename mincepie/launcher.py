@@ -117,7 +117,7 @@ def launch_slurm(argv):
             logging.fatal("Stderr:\n" + err)
             sys.exit(1)
         else:
-            logging.info("Slurm job #%d: " % (i) + out)
+            logging.debug("Slurm job #%d: " % (i) + out.strip())
     # wait for server process to finish
     serverprocess.join()
     return
