@@ -10,14 +10,14 @@ author: Yangqing Jia (jiayq84@gmail.com)
 import gflags
 import logging
 from mincepie import mince
+from multiprocessing import Process
 import socket
 import sys
 
-# general flags    
-gflags.DEFINE_boolean("server", False,
-        "If --server is specified, run in servermode.")
-gflags.DEFINE_integer("loglevel", 40,
+gflags.DEFINE_integer("loglevel", 20,
         "The level for logging. 20 for INFO and 10 for DEBUG.")
+gflags.DEFINE_string("launch", "local",
+        "The launch mode. See mincepie.launcher.launch() for details.")
 FLAGS = gflags.FLAGS
 
 
@@ -39,18 +39,28 @@ def process_argv(argv):
 
 def launch(argv=None):
     """Launches the program with commandline flag
-
-    If --server is set, run in server mode; otherwise, run in client mode
     """
     process_argv(argv)
-    if gflags.FLAGS.server:
+    if FLAGS.launch == 'local':
+        server, client = mince.Server(), mince.Client()
+        serverprocess = Process(target = server.run_server, args = ())
+        clientprocess = Process(target = client.run_client, args = ())
+        serverprocess.start()
+        clientprocess.start()
+        clientprocess.join()
+        serverprocess.join()
+    elif FLAGS.launch == "server":
         # server mode
         server = mince.Server()
         server.run_server()
-    else:
+    elif FLAGS.launch == "client":
         # client mode
         client = mince.Client()
         client.run_client()
+    elif FLAGS.launch == "mpi":
+        launch_mpi()
+    elif FLAGS.launch.startswith('slurm'):
+        raise NotImplementedError
     return
 
 
@@ -63,11 +73,11 @@ def launch_mpi(argv = None):
     try:
         from mpi4py import MPI
     except ImportError:
-        print 'To use launch_mpi, you need mpi4py installed.'
+        logging.fatal('To use launch_mpi, you need mpi4py installed.')
         sys.exit(1)
     comm = MPI.COMM_WORLD
     if comm.Get_size() == 1:
-        print 'You need to specify more than one MPI host.'
+        logging.error('You need to specify more than one MPI host.')
         sys.exit(1)
     process_argv(argv)
     # get the server address
