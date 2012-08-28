@@ -15,6 +15,7 @@ distribute your job.
 
 from mincepie import mapreducer, launcher
 from subprocess import Popen, PIPE
+import logging
 
 _CONFIG = {'matlab_bin': 'matlab',
            'args': ['-nodesktop','-nosplash','-nojvm','-singleCompThread']
@@ -46,6 +47,7 @@ def wrap_command(command):
         "fprintf(2,'%s')" % (_SUCCESS_STR),
         "catch ME",
         "disp(ME)",
+        "disp(ME.message)",
         "disp(ME.stack)",
         "fprintf(2,'%s')" % (_FAIL_STR),
         "end",
@@ -79,24 +81,28 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
                          stdin = PIPE, stdout = PIPE, stderr = PIPE)
         except OSError, errmsg:
             # if we catch OSError, we return the error for investigation
+            logging.error(repr(errmsg))
             yield key, (False, errmsg, command)
         # pass the command to Matlab. 
         try:
             str_out, str_err = proc.communicate(command)
         except Exception, errmsg:
             # if proc.communicate encounters some error, return the error
+            logging.error(repr(errmsg))
             yield key, (False, errmsg, command)
         # now, parse stderr to see whether we succeeded
         if str_err.endswith(_SUCCESS_STR):
             yield key, (True, str_out, str_err)
         else:
+            logging.error(str_out)
+            logging.error(str_err)
+            logging.error(command)
             yield key, (False, str_out, str_err, command)
 
 mapreducer.REGISTER_MAPPER(SimpleMatlabMapper)
 
 
-SimpleMatlabReducer = mapreducer.IdentityReducer
-mapreducer.REGISTER_DEFAULT_REDUCER(SimpleMatlabReducer)
+mapreducer.REGISTER_DEFAULT_REDUCER(mapreducer.IdentityReducer)
 
 
 if __name__ == "__main__":
