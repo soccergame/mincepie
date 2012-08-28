@@ -60,9 +60,7 @@ TASK = Enum(['START',
              'FINISHED',
             ])
 
-# general flags    
-gflags.DEFINE_boolean("server", False,
-    "If --server is specified, run in servermode.")
+
 # flags defined for connection
 gflags.DEFINE_string("password", "default",
     "The password for server client authentication")
@@ -448,8 +446,8 @@ class TaskManager(object):
             return
         self.num_done_maps += 1 
         logging.debug('Map done (%d / %d): ' 
-                            % (self.num_maps, self.num_done_maps)
-                      + data[0])
+                            % (self.num_done_maps, self.num_maps)
+                      + str(data[0]))
         # for logging.info, we only output the reports periodically
         if self.num_done_maps * 10 / self.num_maps > \
                 (self.num_done_maps-1) * 10 / self.num_maps:
