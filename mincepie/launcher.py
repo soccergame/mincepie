@@ -12,20 +12,30 @@ import logging
 from mincepie import mince
 from multiprocessing import Process
 import socket
+from subprocess import Popen, PIPE
 import sys
 
 gflags.DEFINE_integer("loglevel", 20,
         "The level for logging. 20 for INFO and 10 for DEBUG.")
 gflags.DEFINE_string("launch", "local",
         "The launch mode. See mincepie.launcher.launch() for details.")
+# slurm flags
+gflags.DEFINE_integer("slurm_numjobs", 0,
+        "The number of clients to be submitted to slurm")
+gflags.DEFINE_string("slurm_shebang", "#!/bin/bash",
+        "The shebang of the slurm batch script")
+gflags.DEFINE_string("slurm_python_bin", "python",
+        "The path to the python program for slurm")
+gflags.DEFINE_string("sbatch_bin", "sbatch",
+        "The command to be passed to sbatch")
+gflags.DEFINE_string("sbatch_args", "",
+        "The sbatch arguments")
 FLAGS = gflags.FLAGS
-
+_SLURM_WARNING_LIMIT = 100
 
 def process_argv(argv):
     """processes the arguments using gflags
     """
-    if argv is None:
-        argv = sys.argv
     try:
         # parse flags
         inputlist = gflags.FLAGS(argv)
@@ -40,6 +50,8 @@ def process_argv(argv):
 def launch(argv=None):
     """Launches the program with commandline flag
     """
+    if argv is None:
+        argv = sys.argv
     process_argv(argv)
     if FLAGS.launch == 'local':
         server, client = mince.Server(), mince.Client()
@@ -59,12 +71,58 @@ def launch(argv=None):
         client.run_client()
     elif FLAGS.launch == "mpi":
         launch_mpi()
-    elif FLAGS.launch.startswith('slurm'):
-        raise NotImplementedError
+    elif FLAGS.launch == 'slurm':
+        launch_slurm(argv)
     return
 
 
-def launch_mpi(argv = None):
+def launch_slurm(argv):
+    """ launches the server on the local machine, and sbatch slurm clients
+
+    Commandline arguments:
+        --slurm_numjobs
+        --sbatch_bin
+        --sbatch_args
+        --slurm_shebang
+        --slurm_python_bin
+    """
+    address = socket.gethostbyname(socket.gethostname())
+    command = "%s\n%s %s --address=%s --launch=client" \
+                % (FLAGS.slurm_shebang,
+                   FLAGS.slurm_python_bin,
+                   " ".join(argv),
+                   address)
+    if (FLAGS.slurm_numjobs <= 0):
+        logging.fatal("The number of slurm clients should be positive.")
+        sys.exit(1)
+    if (FLAGS.slurm_numjobs > _SLURM_WARNING_LIMIT):
+        logging.warning("Really? So many slurm clients?")
+    # first, run server
+    server = mince.Server()
+    serverprocess = Process(target = server.run_server, args=())
+    serverprocess.start()
+    # now, submit slurm jobs
+    logging.info('Submitting slurm jobs.')
+    logging.info('Command:\n'+command)
+    for i in range(FLAGS.slurm_numjobs):
+        args = [FLAGS.sbatch_bin]
+        if FLAGS.sbatch_args != "":
+            args += FLAGS.sbatch_args.split(" ")
+        proc = Popen(args, stdin = PIPE, stdout = PIPE, stderr = PIPE)
+        out, err = proc.communicate(command)
+        if err != "":
+            # sbatch seem to have returned an error
+            logging.fatal("Sbatch does not run as expected.")
+            logging.fatal("Stdout:\n" + out)
+            logging.fatal("Stderr:\n" + err)
+            sys.exit(1)
+        else:
+            logging.info("Slurm job #%d: " % (i) + out)
+    # wait for server process to finish
+    serverprocess.join()
+    return
+
+def launch_mpi():
     """Launches the program with MPI
 
     The mpi root host runs in server mode, and others run in client mode.
@@ -79,7 +137,6 @@ def launch_mpi(argv = None):
     if comm.Get_size() == 1:
         logging.error('You need to specify more than one MPI host.')
         sys.exit(1)
-    process_argv(argv)
     # get the server address
     address = socket.gethostbyname(socket.gethostname())
     address = comm.bcast(address)
