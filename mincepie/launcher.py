@@ -22,8 +22,10 @@ gflags.DEFINE_integer("loglevel", 20,
 gflags.DEFINE_string("launch", "local",
         "The launch mode. See mincepie.launcher.launch() for details.")
 # slurm flags
-gflags.DEFINE_integer("slurm_numjobs", 0,
-        "The number of clients to be submitted to slurm")
+gflags.DEFINE_integer("num_clients", 1,
+        "The number of clients. Does not apply in the case of MPI.")
+gflags.RegisterValidator('num_clients', lambda x: x > 0,
+                         message='--num_clients must be positive.')
 gflags.DEFINE_string("slurm_shebang", "#!/bin/bash",
         "The shebang of the slurm batch script")
 gflags.DEFINE_string("slurm_python_bin", "python",
@@ -35,7 +37,7 @@ gflags.DEFINE_string("scancel_bin", "scancel",
 gflags.DEFINE_string("sbatch_args", "",
         "The sbatch arguments")
 FLAGS = gflags.FLAGS
-_SLURM_WARNING_LIMIT = 100
+
 
 def process_argv(argv):
     """processes the arguments using gflags
@@ -58,13 +60,7 @@ def launch(argv=None):
         argv = sys.argv
     process_argv(argv)
     if FLAGS.launch == 'local':
-        server, client = mince.Server(), mince.Client()
-        serverprocess = Process(target = server.run_server, args = ())
-        clientprocess = Process(target = client.run_client, args = ())
-        serverprocess.start()
-        clientprocess.start()
-        clientprocess.join()
-        serverprocess.join()
+        launch_local()
     elif FLAGS.launch == "server":
         # server mode
         server = mince.Server()
@@ -77,14 +73,35 @@ def launch(argv=None):
         launch_mpi()
     elif FLAGS.launch == 'slurm':
         launch_slurm(argv)
+    logging.info("Mapreduce terminated.")
     return
 
+
+def launch_local():
+    """ launches both the server and the clients on the local machine.
+    
+    The number of clients is defined in FLAGS.num_clients.
+    """
+    server, client = mince.Server(), mince.Client()
+    serverprocess = Process(target = server.run_server, args = ())
+    serverprocess.start()
+    clientprocess = []
+    for i in range(FLAGS.num_clients):
+        clientprocess.append(
+                Process(target = client.run_client, args = ()))
+        clientprocess[i].start()
+    serverprocess.join()
+    logging.info("Waiting for processes to finish.")
+    # some clients might still be running, and we will wait for them
+    for i in range(FLAGS.num_clients): 
+        clientprocess[i].join()
+    return
 
 def launch_slurm(argv):
     """ launches the server on the local machine, and sbatch slurm clients
 
     Commandline arguments:
-        --slurm_numjobs
+        --num_clients
         --sbatch_bin
         --sbatch_args
         --slurm_shebang
@@ -98,11 +115,9 @@ def launch_slurm(argv):
                    address)
     jobname = hashlib.md5(argv[0] + str(FLAGS.port) + str(time.time()))\
                      .hexdigest()
-    if (FLAGS.slurm_numjobs <= 0):
+    if (FLAGS.num_clients <= 0):
         logging.fatal("The number of slurm clients should be positive.")
         sys.exit(1)
-    if (FLAGS.slurm_numjobs > _SLURM_WARNING_LIMIT):
-        logging.warning("Really? So many slurm clients?")
     # first, run server
     server = mince.Server()
     serverprocess = Process(target = server.run_server, args=())
@@ -110,7 +125,7 @@ def launch_slurm(argv):
     # now, submit slurm jobs
     logging.info('Submitting slurm jobs.')
     logging.info('Command:\n'+command)
-    for i in range(FLAGS.slurm_numjobs):
+    for i in range(FLAGS.num_clients):
         args = [FLAGS.sbatch_bin, '--job-name=%s' % (jobname,)]
         if FLAGS.sbatch_args != "":
             args += FLAGS.sbatch_args.split(" ")
