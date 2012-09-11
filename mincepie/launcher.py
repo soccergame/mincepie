@@ -125,6 +125,11 @@ def launch_slurm(argv):
     # now, submit slurm jobs
     logging.info('Submitting slurm jobs.')
     logging.info('Command:\n'+command)
+    with open(jobname + '.sh', 'w') as fid:
+        fid.write(command)
+        fid.close()
+    logging.info('Command saved to %s.sh' % (jobname))
+    logging.info('Use sbatch %s.sh to add jobs if you want.' % (jobname))
     for i in range(FLAGS.num_clients):
         args = [FLAGS.sbatch_bin, '--job-name=%s' % (jobname,)]
         if FLAGS.sbatch_args != "":
