@@ -34,7 +34,7 @@ def set_config(key, value):
     _CONFIG[key] = value
 
 
-def wrap_command(command):
+def _wrap_command(command):
     """ We wrap the command in a try-catch pair. 
     
     If any exception is caught,
@@ -78,7 +78,7 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
         Do NOT override this with your own map() function - instead, write
         your own make_command(self, key, value) function.
         """
-        command = wrap_command(self.make_command(key, value))
+        command = _wrap_command(self.make_command(key, value))
         try:
             proc = Popen([_CONFIG['matlab_bin']] + _CONFIG['args'],
                          stdin = PIPE, stdout = PIPE, stderr = PIPE)
