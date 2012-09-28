@@ -29,7 +29,7 @@ def set_config(key, value):
     """Sets the config of matlab
     
     For example, you can set your own matlab bin:
-    set_CONFIG('matlab_bin','/path/to/your/matlab/bin/matlab')
+    set_config('matlab_bin','/path/to/your/matlab/bin/matlab')
     """
     _CONFIG[key] = value
 
