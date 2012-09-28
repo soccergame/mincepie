@@ -3,6 +3,7 @@
 author: Yangqing Jia (jiayq84@gmail.com)
 """
 
+import cPickle as pickle
 import gflags
 import glob
 import logging
@@ -281,7 +282,7 @@ REGISTER_READER(FileReader)
 
 
 class FileWriter(BasicWriter):
-    """The class that dumps the key values pair to FLAGS.output
+    """The class that dumps the key values pair to FLAGS.output as strings
     """
     def write(self, result):
         with open(FLAGS.output,'w') as fid:
@@ -289,3 +290,13 @@ class FileWriter(BasicWriter):
                 fid.write(key + ":" + repr(result[key])+'\n')
 
 REGISTER_WRITER(FileWriter)
+
+class PickleWriter(BasicWriter):
+    """The class that dumps the key values pair to FLAGS.output as picked
+    objects.
+    """
+    def write(self, result):
+        with open(FLAGS.output,'w') as fid:
+            pickle.dump(result, fid)
+
+REGISTER_WRITER(PickleWriter)
