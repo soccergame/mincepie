@@ -12,20 +12,22 @@ import hashlib
 import logging
 from mincepie import mince
 from multiprocessing import Process
-import time
+import os
 import socket
 from subprocess import Popen, PIPE
 import sys
+import time
 
 gflags.DEFINE_integer("loglevel", 20,
         "The level for logging. 20 for INFO and 10 for DEBUG.")
 gflags.DEFINE_string("launch", "local",
         "The launch mode. See mincepie.launcher.launch() for details.")
-# slurm flags
+
 gflags.DEFINE_integer("num_clients", 1,
         "The number of clients. Does not apply in the case of MPI.")
 gflags.RegisterValidator('num_clients', lambda x: x > 0,
                          message='--num_clients must be positive.')
+# slurm flags
 gflags.DEFINE_string("slurm_shebang", "#!/bin/bash",
         "The shebang of the slurm batch script")
 gflags.DEFINE_string("slurm_python_bin", "python",
@@ -36,6 +38,18 @@ gflags.DEFINE_string("scancel_bin", "scancel",
         "The command to call scancel")
 gflags.DEFINE_string("sbatch_args", "",
         "The sbatch arguments")
+# torque flags
+gflags.DEFINE_string("torque_shebang", "#!/bin/bash",
+        "The shebang of the torque batch script")
+gflags.DEFINE_string("torque_python_bin", "python",
+        "The command to call python")
+gflags.DEFINE_string("qsub_bin", "qsub",
+        "The command to call qsub")
+gflags.DEFINE_string("qsub_args", "",
+        "The qsub arguments")
+gflags.DEFINE_string("qdel_bin", "qdel",
+        "The command to call qdel")
+# easy access to FLAGS
 FLAGS = gflags.FLAGS
 
 
@@ -71,8 +85,13 @@ def launch(argv=None):
         client.run_client()
     elif FLAGS.launch == "mpi":
         launch_mpi()
-    elif FLAGS.launch == 'slurm':
+    elif FLAGS.launch == "slurm":
         launch_slurm(argv)
+    elif FLAGS.launch == "torque":
+        launch_torque(argv)
+    else:
+        logging.fatal("Unable to recognize the launch mode: "+ FLAGS.launch)
+        sys.exit(1)
     logging.info("Mapreduce terminated.")
     return
 
@@ -153,6 +172,73 @@ def launch_slurm(argv):
     # We may want to handle the case when scancel fails?
     proc.communicate()
     return
+
+def launch_torque(argv):
+    """ launches the server on the local machine, and sbatch slurm clients
+
+    Commandline arguments:
+        --num_clients
+        --qsub_bin
+        --qsub_args
+        --torque_shebang
+        --torque_python_bin
+
+    Caveat: your torque cluster should be able to submit jobs. Otherwise, you
+        need to start the mapreduce server in the frontend node, which is
+        probably not desired. Alternatively, use launch_mpi.
+    """
+    address = socket.gethostname()
+    command = "%s\n cd %s\n %s %s --address=%s --launch=client" \
+                % (FLAGS.slurm_shebang,
+                   os.getcwd(),
+                   FLAGS.slurm_python_bin,
+                   " ".join(argv),
+                   address)
+    jobname = hashlib.md5(argv[0] + str(FLAGS.port) + str(time.time()))\
+                     .hexdigest()
+    if (FLAGS.num_clients <= 0):
+        logging.fatal("The number of torque clients should be positive.")
+        sys.exit(1)
+    # first, run server
+    server = mince.Server()
+    serverprocess = Process(target = server.run_server, args=())
+    serverprocess.start()
+    # now, submit slurm jobs
+    logging.info('Submitting torque jobs.')
+    logging.info('Command:')
+    logging.info(command)
+    with open(jobname + '.sh', 'w') as fid:
+        fid.write(command)
+        fid.close()
+    logging.info('Command saved to %s.sh' % (jobname))
+    logging.info('Use qsub %s.sh to add jobs if you want.' % (jobname))
+    jobs = []
+    for i in range(FLAGS.num_clients):
+        args = [FLAGS.qsub_bin, '-N', jobname]
+        if FLAGS.qsub_args != "":
+            args += FLAGS.qsub_args.split(" ")
+        proc = Popen(args, stdin = PIPE, stdout = PIPE, stderr = PIPE)
+        out, err = proc.communicate(command)
+        if err != "":
+            # sbatch seem to have returned an error
+            logging.fatal("qsub does not run as expected.")
+            logging.fatal("Stdout:\n" + out)
+            logging.fatal("Stderr:\n" + err)
+            sys.exit(1)
+        else:
+            jobs.append(out.strip())
+            logging.debug("Torque job #%d: " % (i) + out.strip())
+    # wait for server process to finish
+    serverprocess.join()
+    logging.debug("Removing any pending jobs.")
+    for job in jobs:
+        proc = Popen([FLAGS.qdel_bin, job],
+                      stdin = PIPE, stdout = PIPE, stderr = PIPE)
+        # Here we simply do a communicate and discard the results
+        proc.communicate()
+    return
+
+
 
 def launch_mpi():
     """Launches the program with MPI
