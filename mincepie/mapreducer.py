@@ -14,9 +14,9 @@ gflags.DEFINE_string("mapper", "",
                      "The mapper class for the mapreduce task")
 gflags.DEFINE_string("reducer", "",
                      "The reducer class for the mapreduce task")
-gflags.DEFINE_string("reader", "BasicReader",
+gflags.DEFINE_string("reader", "",
                      "The reader class for the mapreduce task")
-gflags.DEFINE_string("writer", "BasicWriter",
+gflags.DEFINE_string("writer", "",
                      "The reader class for the mapreduce task")
 gflags.DEFINE_string("output", "",
                      "The string passed to the writer")
@@ -180,7 +180,9 @@ class BasicReader(object):
         inputlist = glob.glob(input_string)
         return dict(enumerate(inputlist))
 
-REGISTER_READER(BasicReader)
+# If the user does not override the reader option, BasicReader is the default
+# reader.
+REGISTER_DEFAULT_READER(BasicReader)
 
 
 class BasicWriter(object):
@@ -209,7 +211,7 @@ class BasicWriter(object):
         for key in result:
             print key, ":", repr(result[key])
 
-REGISTER_WRITER(BasicWriter)
+REGISTER_DEFAULT_WRITER(BasicWriter)
 
 
 class IdentityMapper(BasicMapper):
