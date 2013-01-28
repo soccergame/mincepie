@@ -70,6 +70,9 @@ gflags.DEFINE_string("address", "127.0.0.1",
     "The address of the server")
 gflags.DEFINE_integer("timeout", 60,
     "The number of seconds before a client stops reconnecting")
+gflags.DEFINE_integer("report_interval", 10,
+    "The interval between which we report the elapsed time of mapping")
+
 # FLAGS
 FLAGS = gflags.FLAGS
 
@@ -449,13 +452,14 @@ class TaskManager(object):
         logging.debug('Map done (%d / %d): %s ' \
                       % (self.num_done_maps, self.num_maps, str(data[0])))
         # for logging.info, we only output the reports periodically
-        if self.num_done_maps * 10 / self.num_maps > \
-                (self.num_done_maps-1) * 10 / self.num_maps:
+        next_report_point = FLAGS.report_interval
+        if self.num_done_maps * 100 / self.num_maps >= next_report_point:
             elapsed = datetime.timedelta(
                     seconds=time.time() - self.map_start_time)
             logging.info("%d%% maps done. Elapsed %s." \
                          % (self.num_done_maps * 100 / self.num_maps,
                             str(elapsed)))
+            next_report_point += FLAGS.report_interval
         if data[1] is not None:
             for (key, values) in data[1].iteritems():
                 if key not in self.map_results:
