@@ -453,7 +453,7 @@ class TaskManager(object):
                       % (self.num_done_maps, self.num_maps, str(data[0])))
         # for logging.info, we only output the reports periodically
         next_report_point = FLAGS.report_interval
-        if self.num_done_maps * 100 / self.num_maps >= next_report_point:
+        if int(self.num_done_maps * 100 / self.num_maps) >= next_report_point:
             elapsed = datetime.timedelta(
                     seconds=time.time() - self.map_start_time)
             logging.info("%d%% maps done. Elapsed %s." \
