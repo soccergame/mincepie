@@ -393,6 +393,7 @@ class TaskManager(object):
         self.num_done_maps = 0
         self.server = server
         self.state = TASK.START
+        self.next_report_point = FLAGS.report_interval
 
     def next_task(self, channel):
         """Returns the next task to carry out
@@ -452,14 +453,13 @@ class TaskManager(object):
         logging.debug('Map done (%d / %d): %s ' \
                       % (self.num_done_maps, self.num_maps, str(data[0])))
         # for logging.info, we only output the reports periodically
-        next_report_point = FLAGS.report_interval
-        if int(self.num_done_maps * 100 / self.num_maps) >= next_report_point:
+        ratio = int(self.num_done_maps * 100 / self.num_maps)
+        if ratio >= self.next_report_point:
             elapsed = datetime.timedelta(
                     seconds=time.time() - self.map_start_time)
             logging.info("%d%% maps done. Elapsed %s." \
-                         % (self.num_done_maps * 100 / self.num_maps,
-                            str(elapsed)))
-            next_report_point += FLAGS.report_interval
+                    % (ratio, str(elapsed)))
+            self.next_report_point += FLAGS.report_interval
         if data[1] is not None:
             for (key, values) in data[1].iteritems():
                 if key not in self.map_results:
