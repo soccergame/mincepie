@@ -282,6 +282,16 @@ class FileReader(BasicReader):
 
 REGISTER_READER(FileReader)
 
+class IterateReader(BasicReader):
+    """This reader treats the input as a number, and creates range(number)
+    as the keys with empty values
+    """
+    def read(self, input_string):
+        num = int(input_string)
+        data = dict((n,None) for n in range(num))
+        return data
+
+REGISTER_READER(IterateReader)
 
 class FileWriter(BasicWriter):
     """The class that dumps the key values pair to FLAGS.output as strings
