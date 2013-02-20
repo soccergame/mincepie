@@ -22,7 +22,6 @@ gflags.DEFINE_integer("loglevel", 20,
         "The level for logging. 20 for INFO and 10 for DEBUG.")
 gflags.DEFINE_string("launch", "local",
         "The launch mode. See mincepie.launcher.launch() for details.")
-
 gflags.DEFINE_integer("num_clients", 1,
         "The number of clients. Does not apply in the case of MPI.")
 gflags.RegisterValidator('num_clients', lambda x: x > 0,
@@ -38,17 +37,6 @@ gflags.DEFINE_string("scancel_bin", "scancel",
         "The command to call scancel")
 gflags.DEFINE_multistring("sbatch_args", [],
         "The sbatch arguments")
-# torque flags
-gflags.DEFINE_string("torque_shebang", "#!/bin/bash",
-        "The shebang of the torque batch script")
-gflags.DEFINE_string("torque_python_bin", "python",
-        "The command to call python")
-gflags.DEFINE_string("qsub_bin", "qsub",
-        "The command to call qsub")
-gflags.DEFINE_string("qsub_args", "",
-        "The qsub arguments")
-gflags.DEFINE_string("qdel_bin", "qdel",
-        "The command to call qdel")
 # easy access to FLAGS
 FLAGS = gflags.FLAGS
 
