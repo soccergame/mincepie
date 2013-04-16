@@ -1,6 +1,5 @@
 """
 Wordcount demo
-<<<<<<< HEAD
 
 This demo code shows how to perform word count from a set of files. we show how
 to implement a simple mapper and reducer, and launch the mapreduce process.
@@ -42,30 +41,6 @@ from mincepie import launcher
 
 class WordCountMapper(mapreducer.BasicMapper):
     """The wordcount mapper"""
-=======
-
-This demo code shows how to perform word count from a set of files.
-"""
-
-""" Import necessary modules: You will need mapreducer to write your mapper and
-reducer, and launcher to launch your program.
-"""
-from mincepie import mapreducer
-from mincepie import launcher
-
-""" Write our own mappers and reducers, derived from mapreducer.BasicMapper and
-mapreducer.BasicReducer respectively.
-
-For our case, the input value of the mapper is a string as the filename, and the
-input key does not matter. the input key of the reducer is the word, and the 
-value is a list of counts to be summed up.
-
-Optionally, we register the mappers and reducers as default so we do not need
-to specify them in the commandline arguments.
-"""
-
-class WordCountMapper(mapreducer.BasicMapper):
->>>>>>> fa553b48f6540c8434f15040cc8bb71a75d77912
     def map(self, key, value):
         with open(value,'r') as fid:
             for line in fid:
@@ -76,23 +51,15 @@ mapreducer.REGISTER_DEFAULT_MAPPER(WordCountMapper)
 
 
 class WordCountReducer(mapreducer.BasicReducer):
-<<<<<<< HEAD
     """The wordcount reducer"""
-=======
->>>>>>> fa553b48f6540c8434f15040cc8bb71a75d77912
     def reduce(self, key, value):
         return sum(value)
 
 mapreducer.REGISTER_DEFAULT_REDUCER(WordCountReducer)
 
 
-<<<<<<< HEAD
 # (3) Finally, the main entry: simply call launcher.launch() to start
 # everything.
-=======
-""" Finally, the main entry: simply call launcher.launch() to start everything.
-"""
->>>>>>> fa553b48f6540c8434f15040cc8bb71a75d77912
 
 if __name__ == "__main__":
     launcher.launch()
