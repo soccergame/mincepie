@@ -310,7 +310,16 @@ class IterateReader(BasicReader):
     as both the keys and the values
     """
     def read(self, input_string):
-        num = int(input_string)
+        try:
+            num = int(input_string)
+        except ValueError, e:
+            logging.error("Unrecognized input: %s." % input_string)
+            # return an empty dict so nothing gets executed.
+            return dict()
+        # if num is negative, set it to 0
+        if num < 0:
+            logging.error("Negative input: %s" % input_string)
+            num = 0
         data = dict((n, n) for n in range(num))
         return data
 
