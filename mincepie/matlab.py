@@ -13,17 +13,27 @@ the Matlab start and finish overhead, it's probably not a good idea to
 distribute your job, or you need to at least combine multiple small jobs in 
 a larger map() call.
 """
-
+import gflags
 from mincepie import mapreducer
 from subprocess import Popen, PIPE
 import logging
 
+gflags.DEFINE_bool('singlethread', False, \
+        'If set, the matlab will run with single thread.')
+FLAGS = gflags.FLAGS
+
 _CONFIG = {'matlab_bin': 'matlab',
-           'args': ['-nodesktop','-nosplash','-nojvm','-singleCompThread']
+           'args': ['-nodesktop','-nosplash','-nojvm']
           }
 _SUCCESS_STR = '__mincepie.matlab.success__'
 _FAIL_STR = '__mincepie.matlab.fail__'
 
+def set_singlecompthread():
+    """Set the matlab command to use single thread only. In default it will
+    use all the cores available on a machine.
+    """
+    if '-singleCompThread' not in _CONFIG['args']:
+        _CONFIG['args'].append('-singleCompThread')
 
 def set_config(key, value):
     """Sets the config of matlab
@@ -78,6 +88,8 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
         Do NOT override this with your own map() function - instead, write
         your own make_command(self, key, value) function.
         """
+        if FLAGS.singlethread:
+            set_singlecompthread()
         command = _wrap_command(self.make_command(key, value))
         try:
             proc = Popen([_CONFIG['matlab_bin']] + _CONFIG['args'],
