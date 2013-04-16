@@ -192,3 +192,5 @@ def launch_mpi():
         client.run_client(address)
     return
 
+if __name__ == "__main__":
+    print __doc__
