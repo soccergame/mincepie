@@ -1,9 +1,32 @@
 """Common mincepie launchers
 
 This module provides some off-the-shelf launcher that you can use to simplify
-your job scheduling.
+your job scheduling. There are different types of launch mode you can specify -
+refer to the documentation for details about each launch mode.
 
-author: Yangqing Jia (jiayq84@gmail.com)
+Flags defined by this module:
+    --loglevel: the level for logging output. 20 for logging.INFO and 10 for
+        logging.DEBUG. Refer to the logging module for more details.
+    --launch: the launch mode. can be "local" (default), "server", "client", 
+        "mpi", or "slurm".
+    --num_clients: the number of clients. Only used when the launch mode is 
+        local or slurm (in which this number of slurm jobs are submitted, 
+        although the actual number of running clients are also constrained by
+        the slurm resource limit). Default 1.
+
+Slurm-specific flags:
+    --slurm_shebang: the shebang used to create the slurm command. Default 
+        "#!/bin/bash".
+    --slurm_python_bin: the command to call python in the client. Default
+        "python".
+    --sbatch_bin: the command to call sbatch. Default "sbatch".
+    --scancel_bin: the command to call scancel. Default "scancel".
+    --sbatch_args: the sbatch arguments. Can be specified multiple times to add
+        multiple arguments, such as
+            --sbatch_args=--mem=1000 --sbatch_args=--partition=default
+        See the sbatch man page for the list of sbatch arguments.
+
+Yangqing jia, jiayq@eecs.berkeley.edu
 """
 
 # python modules
@@ -12,7 +35,6 @@ import hashlib
 import logging
 from mincepie import mince
 from multiprocessing import Process
-import os
 import socket
 from subprocess import Popen, PIPE
 import sys
@@ -132,8 +154,8 @@ def launch_slurm(argv):
     with open(jobname + '.sh', 'w') as fid:
         fid.write(command)
         fid.close()
-    logging.info('Command saved to %s.sh' % (jobname))
-    logging.info('Use sbatch %s.sh to add jobs if you want.' % (jobname))
+    logging.info('Command saved to %s.sh', jobname)
+    logging.info('Use sbatch %s.sh to add jobs if you want.', jobname)
     for i in range(FLAGS.num_clients):
         args = [FLAGS.sbatch_bin, '--job-name=%s' % (jobname,)]
         if len(FLAGS.sbatch_args) > 0:
@@ -148,7 +170,7 @@ def launch_slurm(argv):
             serverprocess.terminate()
             sys.exit(1)
         else:
-            logging.debug("Slurm job #%d: " % (i) + out.strip())
+            logging.debug("Slurm job #%d: %s", i, str(out).strip())
     # wait for server process to finish
     serverprocess.join()
     logging.debug("Removing any pending jobs.")
