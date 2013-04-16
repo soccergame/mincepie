@@ -1,15 +1,49 @@
-"""The mapreduce mince module
-The module implements the server, the clients, and the communication between
-the server and clients.
+"""
+The mince module implements the server, the clients, and the communication
+between the server and clients.
 
 The communication part of this code is adapted from the original mincemeat 
-code. For more details, please read the LICENSE file.
+code. The original license reads as follows:
+
+*****
+Copyright (c) 2010 Michael Fairley
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*****
  
 Usually you don't need to import mince in your own mapreduce code - instead,
 import mapreducer to write your mappers, reducers, readers and writers, and
 import launcher to launch the mapreduce job.
 
-author: Yangqing Jia (jiayq84@gmail.com)
+Flags defined by this module:
+    --password: a string for simple authentication between the server and the
+        client. Default "default".
+    --port: The port number for the mapreduce task.
+    --address: The address of the server, if you are running the program as a 
+        client manually.
+    --timeout: the number of seconds before a client stops reconnecting to the 
+        server, in case the server does not respond.
+    --report_interval: the percentage interval between which we report the 
+        progress of mapping. Default 10 (i.e. we report the elapsed time at
+        10%, 20%, ...).
+
+Modified by Yangqing Jia (jiayq84@gmail.com)
 """
 
 # python modules
@@ -21,16 +55,14 @@ import gflags
 import hashlib
 import hmac
 import logging
-from mincepie import mapreducer
 import os
-import random
 import socket
 import sys
 import time
 
+from . import mapreducer
 
 # constant variables
-VERSION = "0.0.1"
 SEPARATOR = ':'
 TERMINATOR = '\n'
 CONNECTION_WAIT_TIME = 1
@@ -265,11 +297,11 @@ class Client(Protocol):
         if self.mapper is None:
             # create the mapper instance
             self.mapper = mapreducer.MAPPER(FLAGS.mapper)()
-        for k, v in self.mapper.map(data[0], data[1]):
+        for key, val in self.mapper.map(data[0], data[1]):
             try:
-                results[k].append(v)
+                results[key].append(val)
             except KeyError:
-                results[k] = [v]
+                results[key] = [val]
         self.send_command(COMMAND.mapdone, (data[0], results))
 
     def call_reduce(self, command, data):
@@ -306,8 +338,8 @@ class Server(asyncore.dispatcher, object):
         self._datasource = None
         self.taskmanager = None
 
-    def set_datasource(self, ds):
-        self._datasource = ds
+    def set_datasource(self, datasource):
+        self._datasource = datasource
         self.taskmanager = TaskManager(self._datasource, self)
     
     def get_datasource(self):
@@ -435,7 +467,8 @@ class TaskManager(object):
                 return (COMMAND.reduce, reduce_item)
             except StopIteration:
                 if self.working_reduces:
-                    key = min(self.working_reduces, key=self.working_reduces.get)
+                    key = min(self.working_reduces,
+                            key=self.working_reduces.get)
                     self.working_reduces[key] = time.time()
                     return (COMMAND.reduce, (key, self.map_results[key]))
                 else:
