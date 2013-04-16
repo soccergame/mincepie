@@ -9,5 +9,5 @@ setup(
     author='Yangqing Jia',
     author_email='jiayq84@gmail.com',
     packages=['mincepie'],
-    install_requires=['python-gflags'],
+    requires=['gflags'],
 )
