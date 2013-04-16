@@ -1,6 +1,14 @@
-"""Basic mapreduce class, and a few default ones
+"""
+The basic mapreduce class, and a few default mapper and reducers for simple
+cases.
 
-author: Yangqing Jia (jiayq84@gmail.com)
+Flags defined by this module:
+    --mapper, --reducer, --reader, --writer: the class names for the mapper,
+        reducer, reader and writer respectively.
+    --input: the input pattern that gets passed to the reader.
+    --output: the output that gets passed to the writer.
+
+Yangqing Jia, jiayq@eecs.berkeley.edu
 """
 
 import cPickle as pickle
@@ -28,17 +36,11 @@ FLAGS = gflags.FLAGS
 # Register methods
 # These methods allow you to register your mapper, reducer, reader and writers
 # so they are recognizable as a string.
-#
-# For example, if you have your self-definedmapper class called FooMapper, 
+
+# For example, if you have your self-defined mapper class called FooMapper, 
 # call REGISTER_MAPPER(FooMapper). You will then able to get the mapper class
 # by its name using the MAPPER() function like MAPPER('FooMapper').
 # This allows us to specify mapper using commandline arguments.
-
-_MAPPERS  = {}
-_REDUCERS = {}
-_READERS  = {}
-_WRITERS  = {}
-_DEFAULT_NAME = '_default'
 
 def _register(target_dict, object_to_register):
     """The basic registerer
@@ -52,23 +54,15 @@ def _register(target_dict, object_to_register):
 
 def _register_default(target_dict, object_to_register):
     """In addition to registering the name, we also register it as default.
+
+    If you are tired of registering objects and setting them again in the 
+    commandline arguments, this allows you to simply set them as the default 
+    choice. Note that this will override the previously registered default
+    object.
     """
     if not object_to_register.__name__ in target_dict:
         _register(target_dict, object_to_register)
     target_dict[_DEFAULT_NAME] = object_to_register
-
-REGISTER_MAPPER  = lambda x: _register(_MAPPERS,  x)
-REGISTER_REDUCER = lambda x: _register(_REDUCERS, x)
-REGISTER_READER  = lambda x: _register(_READERS,  x)
-REGISTER_WRITER  = lambda x: _register(_WRITERS,  x)
-# If you are tired of registering objects and setting them again in the 
-# commandline arguments, register them as default - note that this will
-# override the previously registered default object.
-REGISTER_DEFAULT_MAPPER  = lambda x: _register_default(_MAPPERS,  x)
-REGISTER_DEFAULT_REDUCER = lambda x: _register_default(_REDUCERS, x)
-REGISTER_DEFAULT_READER  = lambda x: _register_default(_READERS,  x)
-REGISTER_DEFAULT_WRITER  = lambda x: _register_default(_WRITERS,  x)
-
 
 def _get_registered(source_dict, name):
     """Get the registered object from the dictionary
@@ -83,19 +77,40 @@ def _get_registered(source_dict, name):
         logging.fatal(str(source_dict))
         sys.exit(1)
 
+# Internal dictionaries to store the registered methods
+_MAPPERS  = {}
+_REDUCERS = {}
+_READERS  = {}
+_WRITERS  = {}
+_DEFAULT_NAME = '_default'
+# Internal methods for registering.
+REGISTER_MAPPER  = lambda x: _register(_MAPPERS,  x)
+REGISTER_REDUCER = lambda x: _register(_REDUCERS, x)
+REGISTER_READER  = lambda x: _register(_READERS,  x)
+REGISTER_WRITER  = lambda x: _register(_WRITERS,  x)
+REGISTER_DEFAULT_MAPPER  = lambda x: _register_default(_MAPPERS,  x)
+REGISTER_DEFAULT_REDUCER = lambda x: _register_default(_REDUCERS, x)
+REGISTER_DEFAULT_READER  = lambda x: _register_default(_READERS,  x)
+REGISTER_DEFAULT_WRITER  = lambda x: _register_default(_WRITERS,  x)
 MAPPER  = lambda name: _get_registered(_MAPPERS,  name)
 REDUCER = lambda name: _get_registered(_REDUCERS, name)
 READER  = lambda name: _get_registered(_READERS,  name)
 WRITER  = lambda name: _get_registered(_WRITERS,  name)
 
 
+# pylint: disable=R0922
 class BasicMapper(object):
     """The basic mapper class. 
     
     All your mappers are belong to this.
+
+    Your mapper should be derived from BasicMapper, and should at least 
+    implement the map() function.
     """
 
     def __init__(self):
+        """The default initialization: calls set_up()
+        """
         self.set_up()
 
     def set_up(self):
@@ -127,6 +142,8 @@ class BasicReducer(object):
     """
 
     def __init__(self):
+        """The default initialization: calls set_up()
+        """
         self.set_up()
 
     def set_up(self):
@@ -154,8 +171,9 @@ REGISTER_REDUCER(BasicReducer)
 class BasicReader(object):
     """The basic reader class
 
-    The basic reader basically takes in whatever is from the inputlist, and
-    emits each one as a value. The key wound be the index in of the list.
+    The default BasicReader assumes that the input is a string specifying
+    a certain file pattern, uses glob to retrieve a list of files, and 
+    emits each filename. The key would be an index starting from 0.
     """
     def __init__(self):
         self.set_up()
@@ -178,6 +196,7 @@ class BasicReader(object):
         emits each filename. The key would be an index starting from 0.
         """
         inputlist = glob.glob(input_string)
+        inputlist.sort()
         return dict(enumerate(inputlist))
 
 # If the user does not override the reader option, BasicReader is the default
@@ -209,8 +228,10 @@ class BasicWriter(object):
             a dictionary containing (key,value) pairs.
         """
         for key in result:
-            print key, ":", repr(result[key])
+            print repr(key), ":", repr(result[key])
 
+# If the user does not override the writer option, BasicWriter is the default
+# writer.
 REGISTER_DEFAULT_WRITER(BasicWriter)
 
 
@@ -227,7 +248,7 @@ REGISTER_MAPPER(IdentityMapper)
 class IdentityReducer(BasicReducer):
     """IdentityReducer is a reducer that simply emits the same key value pair
     """
-    
+
     def reduce(self, key, values):
         return values
 
@@ -256,13 +277,13 @@ REGISTER_REDUCER(FirstElementReducer)
 
 
 class NoPassReducer(BasicReducer):
-    """This reducer complains if anything is ever passed to it.
+    """This reducer returns nothing.
     
     "You shall not pass!" - Gandalf the Grey
     """
 
     def reduce(self, key, values):
-        raise ValueError, "You shall not pass!"
+        return
 
 REGISTER_REDUCER(NoPassReducer)
 
@@ -273,6 +294,7 @@ class FileReader(BasicReader):
     """
     def read(self, input_string):
         inputlist = glob.glob(input_string)
+        inputlist.sort()
         data = {}
         for filename in inputlist:
             with open(filename, 'r') as fid:
@@ -282,16 +304,18 @@ class FileReader(BasicReader):
 
 REGISTER_READER(FileReader)
 
+
 class IterateReader(BasicReader):
     """This reader treats the input as a number, and creates range(number)
     as both the keys and the values
     """
     def read(self, input_string):
         num = int(input_string)
-        data = dict((n,n) for n in range(num))
+        data = dict((n, n) for n in range(num))
         return data
 
 REGISTER_READER(IterateReader)
+
 
 class FileWriter(BasicWriter):
     """The class that dumps the key values pair to FLAGS.output as strings
@@ -299,9 +323,10 @@ class FileWriter(BasicWriter):
     def write(self, result):
         with open(FLAGS.output,'w') as fid:
             for key in result:
-                fid.write(key + ":" + repr(result[key])+'\n')
+                fid.write(repr(key) + ":" + repr(result[key])+'\n')
 
 REGISTER_WRITER(FileWriter)
+
 
 class PickleWriter(BasicWriter):
     """The class that dumps the key values pair to FLAGS.output as picked
@@ -312,3 +337,4 @@ class PickleWriter(BasicWriter):
             pickle.dump(result, fid)
 
 REGISTER_WRITER(PickleWriter)
+
