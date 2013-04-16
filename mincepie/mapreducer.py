@@ -284,11 +284,11 @@ REGISTER_READER(FileReader)
 
 class IterateReader(BasicReader):
     """This reader treats the input as a number, and creates range(number)
-    as the keys with empty values
+    as both the keys and the values
     """
     def read(self, input_string):
         num = int(input_string)
-        data = dict((n,None) for n in range(num))
+        data = dict((n,n) for n in range(num))
         return data
 
 REGISTER_READER(IterateReader)
