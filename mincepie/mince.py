@@ -43,7 +43,7 @@ Flags defined by this module:
         progress of mapping. Default 10 (i.e. we report the elapsed time at
         10%, 20%, ...).
 
-Modified by Yangqing Jia (jiayq84@gmail.com)
+Modified by Yangqing Jia (jiayq@eecs.berkeley.edu)
 """
 
 # python modules
@@ -505,7 +505,8 @@ class TaskManager(object):
         if not data[0] in self.working_reduces:
             return
         logging.debug('Reduce done: ' + repr(data[0]))
-        self.results[data[0]] = data[1]
+        if data[1] is not None:
+            self.results[data[0]] = data[1]
         del self.working_reduces[data[0]]
 
 
