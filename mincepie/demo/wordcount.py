@@ -1,30 +1,27 @@
-"""Wordcount mapper and reducers
-
-This is a sample implementation of simple mappers and reducers that does
-wordcount. See the word count demos in demos/ for details.
 """
-from mincepie import mapreducer, launcher
+Wordcount demo
 
+This demo code shows how to perform word count from a set of files.
+"""
+
+""" Import necessary modules: You will need mapreducer to write your mapper and
+reducer, and launcher to launch your program.
+"""
+from mincepie import mapreducer
+from mincepie import launcher
+
+""" Write our own mappers and reducers, derived from mapreducer.BasicMapper and
+mapreducer.BasicReducer respectively.
+
+For our case, the input value of the mapper is a string as the filename, and the
+input key does not matter. the input key of the reducer is the word, and the 
+value is a list of counts to be summed up.
+
+Optionally, we register the mappers and reducers as default so we do not need
+to specify them in the commandline arguments.
+"""
 
 class WordCountMapper(mapreducer.BasicMapper):
-    """The class that performs wordcount map
-    
-    The input value of this mapper should be a string containing the words
-    to be counted
-    """
-    def map(self, key, value):
-        for word in value.split():
-            yield word, 1
-
-mapreducer.REGISTER_MAPPER(WordCountMapper)
-
-
-class WordCountFromFileMapper(mapreducer.BasicMapper):
-    """The class that performs wordcount map
-    
-    The input value of this mapper should be a string containing the filename,
-    and all words in that file should be counted.
-    """
     def map(self, key, value):
         with open(value,'r') as fid:
             for line in fid:
@@ -35,13 +32,14 @@ mapreducer.REGISTER_DEFAULT_MAPPER(WordCountFromFileMapper)
 
 
 class WordCountReducer(mapreducer.BasicReducer):
-    """The class that performs wordcount reduce
-    """
     def reduce(self, key, value):
         return sum(value)
 
 mapreducer.REGISTER_DEFAULT_REDUCER(WordCountReducer)
 
+
+""" Finally, the main entry: simply call launcher.launch() to start everything.
+"""
 
 if __name__ == "__main__":
     launcher.launch()
