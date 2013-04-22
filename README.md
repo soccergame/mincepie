@@ -15,4 +15,4 @@ Also, the simplified system
 
 I have used it to perform feature extractions on ImageNet and it works pretty well for our research use. But it may or may not fit your use case.
 
-To see more documentation read [the project page](http://yangqing.github.io/mincepie/) (currently under construction).
+To see more documentation read [the wiki](https://github.com/Yangqing/mincepie/wiki) (currently under construction).
