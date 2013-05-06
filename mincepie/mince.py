@@ -297,7 +297,11 @@ class Client(Protocol):
         if self.mapper is None:
             # create the mapper instance
             self.mapper = mapreducer.MAPPER(FLAGS.mapper)()
-        for key, val in self.mapper.map(data[0], data[1]):
+        for kvpair in self.mapper.map(data[0], data[1]):
+            # if the mapper returns nothing, do nothing
+            if kvpair is None:
+                continue
+            key, val = kvpair
             try:
                 results[key].append(val)
             except KeyError:
