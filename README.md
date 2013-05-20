@@ -1,4 +1,4 @@
-mincepie: Lightweight MapReduce on Python
+mincepie: Lightweight MapReduce in Python
 ============================================
 
 Mincepie is a lightweight mapreduce engine purely written in Python for some of my research code. It is meant for simple distribution of jobs that:
