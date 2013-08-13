@@ -11,7 +11,7 @@ Also, the simplified system
 
 - holds everything in memory - the input, the keys, and the values in every stage of the mapreduce run.
 - does not handle server errors. If the server is down, you have to restart mapreduce.
-- partially tolerates of client failure. If a client is down, its last map() call will simply be re-run on another client.
+- partially tolerates client failure. If a client is down, its last map() call will simply be re-run on another client.
 
 I have used it to perform feature extractions on ImageNet and it works pretty well for our research use. But it may or may not fit your use case.
 
