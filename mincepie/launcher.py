@@ -69,8 +69,8 @@ def process_argv(argv):
     try:
         # parse flags
         inputlist = gflags.FLAGS(argv)
-    except gflags.FlagsError, message:
-        print '%s\\nUsage: %s ARGS\\n%s' % (message, argv[0], gflags.FLAGS)
+    except gflags.FlagsError as message:
+        print('%s\\nUsage: %s ARGS\\n%s' % (message, argv[0], gflags.FLAGS))
         sys.exit(1)
     # set some common stuff
     logging.basicConfig(level=FLAGS.loglevel)
@@ -215,4 +215,4 @@ def launch_mpi():
     return
 
 if __name__ == "__main__":
-    print __doc__
+    print(__doc__)

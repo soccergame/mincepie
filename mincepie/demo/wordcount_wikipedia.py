@@ -25,7 +25,7 @@ from collections import defaultdict
 from mincepie import mapreducer
 from mincepie import launcher
 import re
-import urllib2
+import urllib.request
 
 
 class WikipediaMapper(mapreducer.BasicMapper):
@@ -44,10 +44,10 @@ class WikipediaMapper(mapreducer.BasicMapper):
             articletitle = None
             failed = False
             try:
-                req = urllib2.Request(\
+                req = urllib.request.Request(\
                         'http://en.wikipedia.org/wiki/Special:Random',
                         None, { 'User-Agent' : 'x'})
-                f = urllib2.urlopen(req)
+                f = urllib.request.urlopen(req)
                 while not articletitle:
                     line = f.readline()
                     result = re.search(r'title="Edit this page" href="/w/index.php\?title=(.*)\&amp;action=edit" /\>', line)
@@ -55,15 +55,15 @@ class WikipediaMapper(mapreducer.BasicMapper):
                         articletitle = result.group(1)
                         break
                 if len(line) > 0:
-                    req = urllib2.Request('http://en.wikipedia.org/w/index.php?title=Special:Export/%s&action=submit' \
+                    req = urllib.request.Request('http://en.wikipedia.org/w/index.php?title=Special:Export/%s&action=submit' \
                             % (articletitle), None, { 'User-Agent' : 'x'})
-                    f = urllib2.urlopen(req)
+                    f = urllib.request.urlopen(req)
                     all = f.read()
                 else:
                     continue
-            except (urllib2.HTTPError, urllib2.URLError):
-                print 'oops. there was a failure downloading %s. retrying...' \
-                    % articletitle
+            except (urllib.request.HTTPError, urllib.request.URLError):
+                print('oops. there was a failure downloading %s. retrying...' \
+                    % articletitle)
                 failed = True
                 continue
             # print 'downloaded %s. parsing...' % articletitle
@@ -84,7 +84,7 @@ class WikipediaMapper(mapreducer.BasicMapper):
                 all = re.sub(r'\&lt;.*?&gt;', '', all)
             except:
                 # Something went wrong, try again. (This is bad coding practice.)
-                print 'oops. there was a failure. retrying...'
+                print('oops. there was a failure. retrying...')
                 failed = True
                 continue
         return all

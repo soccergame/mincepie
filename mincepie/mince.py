@@ -49,7 +49,7 @@ Modified by Yangqing Jia (jiayq@eecs.berkeley.edu)
 # python modules
 import asynchat
 import asyncore
-import cPickle as pickle
+import pickle
 import datetime
 import gflags
 import hashlib
@@ -160,7 +160,7 @@ class Protocol(asynchat.async_chat, object):
         """
         idx = message.find(SEPARATOR)
         if idx == -1:
-            raise ValueError, "Unrecognized command: " + message
+            raise ValueError("Unrecognized command: " + message)
         return message[:idx], message[idx+1:]
 
     def found_terminator(self):
@@ -264,7 +264,7 @@ class Client(Protocol):
         while (not self.connected) and time_spent < FLAGS.timeout:
             try:
                 self.connect((address, FLAGS.port))
-            except socket.error, message:
+            except socket.error as message:
                 logging.debug("Conection failed, retry... " + str(message))
                 # Calling __init__ is quite ugly, but there seems to be some 
                 # rumor that asynchat has bugs dealing with socket error, and
@@ -514,5 +514,5 @@ class TaskManager(object):
         del self.working_reduces[data[0]]
 
 if __name__ == "__main__":
-    print __doc__
+    print(__doc__)
 

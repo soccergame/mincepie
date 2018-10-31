@@ -11,7 +11,7 @@ Flags defined by this module:
 Yangqing Jia, jiayq@eecs.berkeley.edu
 """
 
-import cPickle as pickle
+import pickle
 import gflags
 import glob
 import logging
@@ -228,7 +228,7 @@ class BasicWriter(object):
             a dictionary containing (key,value) pairs.
         """
         for key in result:
-            print repr(key), ":", repr(result[key])
+            print(repr(key), ":", repr(result[key]))
 
 # If the user does not override the writer option, BasicWriter is the default
 # writer.
@@ -312,7 +312,7 @@ class IterateReader(BasicReader):
     def read(self, input_string):
         try:
             num = int(input_string)
-        except ValueError, e:
+        except ValueError as e:
             logging.error("Unrecognized input: %s." % input_string)
             # return an empty dict so nothing gets executed.
             return dict()
@@ -348,5 +348,5 @@ class PickleWriter(BasicWriter):
 REGISTER_WRITER(PickleWriter)
 
 if __name__ == "__main__":
-    print __doc__
+    print(__doc__)
 

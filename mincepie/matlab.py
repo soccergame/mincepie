@@ -67,7 +67,7 @@ def get_config(toprint = False):
     """
     if toprint is not False:
         for key in _CONFIG:
-            print '%s: %s' % (key, repr(_CONFIG[key]))
+            print('%s: %s' % (key, repr(_CONFIG[key])))
     return dict(_CONFIG)
 
 def _wrap_command(command):
@@ -146,7 +146,7 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
         try:
             proc = Popen([_CONFIG['matlab_bin']] + _CONFIG['args'],
                          stdin = PIPE, stdout = PIPE, stderr = PIPE)
-        except OSError, errmsg:
+        except OSError as errmsg:
             # if we catch OSError, we return the error for investigation
             logging.error(repr(errmsg))
             yield key, (False, errmsg, command)
@@ -155,7 +155,7 @@ class SimpleMatlabMapper(mapreducer.BasicMapper):
             str_out, str_err = proc.communicate(command)
         # any exception inside the proc call will trigger the fail case.
         # pylint: disable=W0703
-        except Exception, errmsg:
+        except Exception as errmsg:
             # if proc.communicate encounters some error, return the error
             logging.error(repr(errmsg))
             yield key, (False, errmsg, command)
@@ -176,4 +176,4 @@ mapreducer.REGISTER_MAPPER(SimpleMatlabMapper)
 mapreducer.REGISTER_DEFAULT_REDUCER(mapreducer.IdentityReducer)
 
 if __name__ == "__main__":
-    print __doc__
+    print(__doc__)
